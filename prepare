@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+git log | grep ^Author: | sort -u | cut -f'2-' -d' ' > AUTHORS
+git log --date=short --pretty="[%cd | %h | <%aE>]  %s%n" > ChangeLog
+autoreconf --install
