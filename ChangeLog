@@ -1,0 +1,10 @@
+[2011-12-07 | 0aa4b03 | <jwecker@justin.tv>]  Some very basic beginnings of the build information
+
+[2011-12-07 | 20dc16f | <jwecker@justin.tv>]  Stealing this from my mx project and renaming various things- basic skeleton for the fast parsing.
+
+[2011-12-07 | d8e7485 | <jwecker@justin.tv>]  MIT
+
+[2011-12-07 | f8a9835 | <jwecker@justin.tv>]  Slightly modified gnu install instructions
+
+[2011-12-07 | dae4deb | <jwecker@justin.tv>]  Initial commit - ignore a bunch of autotools stuff
+
