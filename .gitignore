@@ -14,3 +14,7 @@ config.status
 src/.deps
 src/Makefile
 stamp*
+udon
+*.o
+*.a
+*.so
