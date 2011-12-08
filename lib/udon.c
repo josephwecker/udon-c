@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <sysexits.h>
 #include <err.h>
+#include <malloc.h>
 
 #include "udon.h"
 
@@ -64,6 +65,7 @@ void free_state(pstate *state) {
 }
 
 int parse(pstate *state) {
+    mallopt(
     UNPACK_STATE();
     return toplevel(state);
 }

@@ -50,9 +50,41 @@ typedef struct {
     // structures for holding the results objects...
 } pstate;
 
+// enum of different child types for identifying them in the linked-list
 
+// UDON_TEXT
+typedef struct UDON_TEXT_ {
+    char      *value;
+    struct     UDON_TEXT_  *next;
+} UDON_TEXT;
+
+// UDON_NODE
+//typedef struct UDON_NODE_ {
+    // type
+    // id
+    // classes
+    // (... OR ....  primary_value == inline text for node and primary data for "text" node)
+    //
+    // === attributes ===
+    // * Number of attributes (for creating different hsearch_data struct if we get to big)
+    //     (global highest # attributes for allocating it - assuming that more
+    //     nodes may have similar numbers of entries...)
+    // * Pointer to the hsearch_data struct
+    // * Linked list of attribute keys (for iteration etc.)
+    // * (private-ish) Array of pointers to attribute values (for freeing if necessary)  (?)
+    //
+    // === children ===
+    // * Flag identifying child-type
+    // * Pointer to First child linked list
+
+//} UDON_NODE;
+
+// Set up, reset, and free parser state object.
 pstate *init_from_file(char *filename);
-int     parse         (pstate *state);
 void    reset_state   (pstate *state);
+void    free_state    (pstate *state);
+
+// Actual parsing
+int     parse         (pstate *state);
 
 #endif

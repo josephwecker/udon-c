@@ -10,3 +10,17 @@
     |pip[simplejson]  :version 2.2.1
     |pip[amqplib]
     |submodule[...]
+
+
+
+-------
+
+
+
+node:
+ * meta-info
+ * attributes (hsearch)
+ * children
+
+
+
