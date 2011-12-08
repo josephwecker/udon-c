@@ -1,3 +1,5 @@
+[2011-12-07 | dec4fcf | <jwecker@justin.tv>]  Separated code out into respective files. untested.
+
 [2011-12-07 | 00034f4 | <jwecker@justin.tv>]  Rearranging for libtools. Code isn't changed accordingly yet, though.
 
 [2011-12-07 | f5fe76a | <jwecker@justin.tv>]  Ignore built results

@@ -1,6 +1,9 @@
 #ifndef UDON_H
 #define UDON_H
 
+#include <stdint.h>
+
+
 #define UNPACK_STATE()       uint64_t *qcurr = state->p_quick; \
                              char     *curr  = state->p_curr;  \
                              uint64_t *qeof  = state->p_qend;  \
