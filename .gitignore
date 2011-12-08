@@ -14,6 +14,10 @@ config.status
 src/.deps
 src/Makefile
 stamp*
+config.guess
+config.sub
+ltmain.sh
+m4
 udon
 *.o
 *.a
