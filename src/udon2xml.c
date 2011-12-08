@@ -5,7 +5,8 @@
 int main (int argc, char *argv[]) {
     int i;
     int found = 0;
-    pstate *state = init_from_file("../sjson-examples/big.txt");
+    if(argc < 2) return 1;
+    pstate *state = init_from_file(argv[1]);
     for(i=0; i<10000; i++) {
         found += parse(state);
         reset_state(state);
