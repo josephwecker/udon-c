@@ -1,3 +1,15 @@
+[2011-12-07 | 6ac80cc | <jwecker@justin.tv>]  Working through the data structures and started officially declaring the state machine.
+
+[2011-12-07 | 39c9862 | <jwecker@justin.tv>]  Scratch
+
+[2011-12-07 | b8ccf5a | <jwecker@justin.tv>]  Remove hardcoded file path. Still awkward and not generally usable, but _more_ general.
+
+[2011-12-07 | 67ab50b | <jwecker@justin.tv>]  Don't install the header (might cause version issues?? just following an example more verbatim...)
+
+[2011-12-07 | 952d31f | <jwecker@justin.tv>]  Make sure and include the header in the installation
+
+[2011-12-07 | efa4198 | <jwecker@justin.tv>]  Compiling and running correctly w/ all the libtools stuff.
+
 [2011-12-07 | dec4fcf | <jwecker@justin.tv>]  Separated code out into respective files. untested.
 
 [2011-12-07 | 00034f4 | <jwecker@justin.tv>]  Rearranging for libtools. Code isn't changed accordingly yet, though.
