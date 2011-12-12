@@ -5,6 +5,8 @@
  * TODO: rewrite error logic now that it's a library to use return values etc.
  */
 
+#define _XOPEN_SOURCE 700
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -14,9 +16,11 @@
 #include <stdint.h>
 #include <sysexits.h>
 #include <err.h>
-#include <malloc.h>
+//#include <malloc.h>
 
 #include "udon.h"
+#include "udon_parsing.h"
+#include "hsearch.h"
 
 void reset_state(pstate *state) {
     state->p_curr   = state->p_start;
@@ -65,7 +69,7 @@ void free_state(pstate *state) {
 }
 
 int parse(pstate *state) {
-    mallopt(
+    //mallopt(
     UNPACK_STATE();
     return toplevel(state);
 }
