@@ -7,4 +7,5 @@ AC_PROG_CC
 AC_CONFIG_SRCDIR([lib/udon.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile])
+AC_FUNC_MALLOC
 AC_OUTPUT
