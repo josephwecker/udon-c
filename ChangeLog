@@ -1,3 +1,9 @@
+[2011-12-12 | 681e7ff | <joseph.wecker@gmail.com>]  Use internal hsearch and separate internal vs. external header file
+
+[2011-12-12 | 2b91496 | <joseph.wecker@gmail.com>]  Added re-entrant version of hsearch from glibc and generalized it a bit for building on other systems.
+
+[2011-12-08 | 16a9a24 | <joseph.wecker@gmail.com>]  Updated log, moved some docs, and fixed autotools a bit
+
 [2011-12-07 | 6ac80cc | <jwecker@justin.tv>]  Working through the data structures and started officially declaring the state machine.
 
 [2011-12-07 | 39c9862 | <jwecker@justin.tv>]  Scratch
