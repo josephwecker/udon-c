@@ -22,8 +22,11 @@
 //#include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
-
 #include "hsearch.h"
+
+#ifndef __set_errno
+#define __set_errno(e) (errno = (e))
+#endif
 
 /* [Aho,Sethi,Ullman] Compilers: Principles, Techniques and Tools, 1986
    [Knuth]            The Art of Computer Programming, part 3 (6.4)  */

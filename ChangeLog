@@ -1,3 +1,7 @@
+[2011-12-12 | 12bf1a5 | <joseph.wecker@gmail.com>]  config check for malloc
+
+[2011-12-12 | 91d6354 | <joseph.wecker@gmail.com>]  update
+
 [2011-12-12 | 681e7ff | <joseph.wecker@gmail.com>]  Use internal hsearch and separate internal vs. external header file
 
 [2011-12-12 | 2b91496 | <joseph.wecker@gmail.com>]  Added re-entrant version of hsearch from glibc and generalized it a bit for building on other systems.
