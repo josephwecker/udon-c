@@ -15,6 +15,18 @@
 
 -------
 
+implement:
+ * toplevel data
+ * toplevel comments
+ * node:
+   * type (simple)
+   * id (simple)
+   * inline attribute
+   * inner-node-inline-comments
+   * own-line attributes
+   * child data
+   * child comments
+   * child nodes
 
 
 node:
@@ -22,5 +34,9 @@ node:
  * attributes (hsearch)
  * children
 
+-------
 
+* current string automatically accumulated
+* data "assignment" step
+* redo automatic $indent calculation... (?)
 

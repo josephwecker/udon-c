@@ -13,34 +13,37 @@ enum UDON_NODE_TYPE {
 };
 
 typedef struct LLIST_ {
-  void                *value;
-  struct LLIST_       *next;
+  void                   *value;
+  struct LLIST_          *next;
 } llist;
 
 typedef struct UDON_NODE_ {
-    /* Basic data / properties */
-    enum UDON_NODE_TYPE node_type;
-                                             // (most of these are null if it's a text node.)
-    char               *type;                // tag/object type
-    char               *id;                  // id text if specified
-    char               *text_value;          // inline text for nodes, main value for text
-    llist              classes;              // classes if defined
-    llist              attribute_keys;
+    /* Basic metadata */
+    enum UDON_NODE_TYPE  node_type;          // full, text, ...
+    uint64_t             line_number;        // source line where node started
+    uint64_t             column_number;      // source column where node started
 
-    /* For navigating */
+    /* Basic data / properties */
+                                             // (most of these are null if it's a text node.)
+    char                 *type;              // tag/object type
+    char                 *id;                // id text if specified
+    char                 *text_value;        // inline text for nodes, main value for text
+    llist                classes;            // classes if defined
+    llist                attribute_keys;
+
+    /* For navigating / iterating */
     // NOTE: at some point it would be easy to add backwards links or links to
     // parents if someone needs them...
-    enum UDON_NODE_TYPE first_child_type;     
-    struct UDON_NODE_  *first_child;         // will contain links to additional children (its siblings)
-
-    enum UDON_NODE_TYPE next_sibling_type;
-    struct UDON_NODE_  *next_sibling;        // essentially a linked list of parent's children
+    enum UDON_NODE_TYPE  first_child_type;     
+    struct UDON_NODE_    *first_child;       // will contain links to additional children (its siblings)
+    enum UDON_NODE_TYPE  next_sibling_type;
+    struct UDON_NODE_    *next_sibling;      // essentially a linked list of parent's children
 
     /* Misc internally used */
-    struct hsearch_data *attributes;          // allows for fetching attr. values
-    uint64_t           _num_attributes;
-    uint64_t           _max_attributes;      // spaces currently allocated
-    //llist            _values_to_free;      // uncomment when/if needed
+    struct hsearch_data  *attributes;        // allows for fetching attr. values
+    uint64_t             _num_attributes;
+    uint64_t             _max_attributes;    // spaces currently allocated
+    //llist              _values_to_free;    // uncomment when/if needed
 } udon_node;
 
 typedef struct {
