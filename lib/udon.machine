@@ -24,15 +24,15 @@ TODO: inline other grammar functions... probably possible (even at construction 
 TODO: add_attr needs to handle anonymous attributes well.
 
 +-----------------------------------+--------------------------------------------------+-----------------------+
-| document()[ROOT]                  | setm;                                            | :toplevel             |
+| document()[ROOT]                  | $setm();                                         | :toplevel             |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
-| :toplevel       | [\n]            | endm; @ch << TEXT(@a); ->;                       | :toplevel             |
+| :toplevel       | [\n]            | $endm(); @ch << TEXT(@a); ->;                    | :toplevel             |
 | :toplevel       | [\t]            | ->;                                              | :toplevel             |
-| :toplevel       | [#]             | ->; @ch << mcomment(); setm;                     | :toplevel             |
-| :toplevel       | [|]             | ->; @ch << node(); setm;                         | :toplevel             |
+| :toplevel       | [#]             | ->; @ch << mcomment(); $setm();                  | :toplevel             |
+| :toplevel       | [|]             | ->; @ch << node(); $setm();                      | :toplevel             |
 | :toplevel       | .               | ->;                                              | :toplevel:data        |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
-| :toplevel:data  | [\n]            | endm; @ch << TEXT(@a); ->;                       | :toplevel             |
+| :toplevel:data  | [\n]            | $endm(); @ch << TEXT(@a); ->;                    | :toplevel             |
 | :toplevel:data  | .               | ->;                                              | :toplevel:data        |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | {eof}           |                 | {@a.len}(@ch << TEXT(@a));                       | <return @s>           |
@@ -44,16 +44,16 @@ TODO: add_attr needs to handle anonymous attributes well.
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | :first:ws       | [ \t]           | ->;  ibase += 1;                                 | :first:ws             |
 | :first:ws       | [\n]            | ->;                                              | :nextline             |
-| :first:ws       | .               | setm; ->;                                        | :data                 |
+| :first:ws       | .               | $setm(); ->;                                     | :data                 |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
-| :data           | [\n]            | endm; @ch << TEXT(@a); ->;                       | :nextline             |
+| :data           | [\n]            | $endm(); @ch << TEXT(@a); ->;                    | :nextline             |
 | :data           | .               | ->;                                              | :data                 |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
-| :nextline       | {$col > ibase}  | setm; ->;                                        | :data                 |
+| :nextline       | {$col > ibase}  | $setm(); ->;                                     | :data                 |
 | :nextline       | [ \t]           | ->;                                              | :nextline             |
 | :nextline       | [\n]            | @ch << TEXT(""); ->;                             | :nextline             |
 | :nextline       | {$col <= ipar}  |                                                  | <return @s>           |
-| :nextline       | .               | setm; ibase=$col; ->;                            | :data                 |
+| :nextline       | .               | $setm(); ibase=$col; ->;                         | :data                 |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | {eof}           |                 | {@a.len}(@ch << TEXT(@a));                       | <return @s>           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
@@ -74,11 +74,11 @@ TODO: add_attr needs to handle anonymous attributes well.
 | :first:ident    | [.]             | ->; @s.append_class(label_str());                | :first:ident          |
 | :first:ident    | [:]             | ->; attkey = label();                            | :first:attr:val       |
 | :first:ident    | [#]             | $skip_past("\n");                                | :children             |
-| :first:ident    | .               | setm; ->;                                        | :first:data           |
+| :first:ident    | .               | $setm(); ->;                                     | :first:data           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
-| :first:data     | {eof?}          | endm; @s.val = @a;                               | <return @s>           |
-| :first:data     | [\n]            | endm; @s.val = @a;                               | :children             |
-| :first:data     | [#]             | endm; @s.val = @a; $skip_past("\n");             | :children             |
+| :first:data     | {eof?}          | $endm(); @s.val = @a;                            | <return @s>           |
+| :first:data     | [\n]            | $endm(); @s.val = @a;                            | :children             |
+| :first:data     | [#]             | $endm(); @s.val = @a; $skip_past("\n");          | :children             |
 | :first:data     | .               | ->;                                              | :first:data           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | :first:attr:val | {eof?}          | @s.add_attr(attkey, null);                       | <return @s>           |
