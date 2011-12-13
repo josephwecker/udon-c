@@ -1,26 +1,113 @@
+
+TODO: use machine node-name and state names in resulting structure where appropriate:
+    * line | column
+    * grammar_part | type | state
+TODO: basic struct inheritance for fewer wasted fields.
+
+
+<struct>~    =>  <data>->first_child
+<struct>'    =>  <data>->next
+@<struct>    => indicates a struct that acts across states in the same function / predefined/reserved vars
+$<struct>    => global
+->           => $p_curr += 1;
+setm         => $mark = $p_curr
+endm         => *$p_curr = 0; // null-terminate it
+@a           => $mark  // a for accumulator even though that's not really what we're doing...
+
+TODO: figure out automatic way to distinguish between c* and c' actions... (possible?)
+ (do comments manually real quick first)
+
++-----------------------------------+-------------------------------------------------------------+-----------------------+
+| document()[ROOT]                  | set; c=@s;                                                  | :toplevel             |
++-----------------+-----------------+-------------------------------------------------------------+-----------------------+
+| :toplevel       | [\n] {curr==s}  | c*=TEXT; end; @a >> c*.val; c=c*; ->;                       | :toplevel             |
+| :toplevel       | [\n]            | c'=TEXT; end; @a >> c'.val; c=c'; ->;                       | :toplevel             |
+| :toplevel       | [\t]            | ->;                                                         | :toplevel             |
+| :toplevel       | [#]             | ->; c'=mcomment(); c=c'; set;                               | :toplevel             |
+| :toplevel       | [|]             | ->; c'=node(); c=c'; set;                                   | :toplevel             |
+| :toplevel       | .               | ->;                                                         | :toplevel:data        |
++-----------------+-----------------+-------------------------------------------------------------+-----------------------+
+| :toplevel:data  | [\n]            |                                                             | :toplevel             | to reuse text node creation logic
+| :toplevel:data  | .               | ->;                                                         | :toplevel:data        |
++-----------------+-----------------+-------------------------------------------------------------+-----------------------+
+#| {eof}           | {curr==s}       | e=new[TEXT]; end; e->val=acc; curr.child=e;                 | <return @s>           |
+#| {eof}           |                 | e=new[TEXT]; end; e->val=acc; curr.next=e;                  | <return @s>           |
++-----------------+-----------------+-------------------------------------------------------------+-----------------------+
+
+
+  set                      # ( acc = $p_curr )
+  ...                      # ...
+  end                      # ( *$p_curr = 0 )
+  node->type = TEXT_NODE   #
+  
+
+
++-----------------+-----------------+-------------------------------------+-----------------------+
+| document()[COMMENT]               | set;                                | :toplevel             | acc=p_curr
++-----------------+-----------------+-------------------------------------+-----------------------+
+| :toplevel       | [\n]            | end; a >> s; ->;                    | :toplevel             |
+| :toplevel       | [ \t]           | ->;                                 | :toplevel             |
+| :toplevel       | [#]             | ->; mcomment() >> s; set;           | :toplevel             | currently set gets thrown away
+| :toplevel       | [|]             | ->; node() >> s; set;               | :toplevel             | currently set gets thrown away
+| :toplevel       | .               |                                     | :toplevel:data        |
++-----------------+-----------------+-------------------------------------+-----------------------+
+| :toplevel:data  | [\n]            | end; a >> s; ->;                    | :toplevel             |
+| :toplevel:data  | .               | ->;                                 | :toplevel:data        |
++-----------------+-----------------+-------------------------------------+-----------------------+
+| {eof}           |                 | end; a >> s;                        | <return s>            |
++-----------------+-----------------+-------------------------------------+-----------------------+
+
+
++-----------------+-----------------+-------------------------------------+-----------------------+
+| mcomment()[comment]               | ibase=$col+1; ipar=$col; has_a=0    | :first:ws             |
++-----------------+-----------------+-------------------------------------+-----------------------+
+| :first:ws       | [ \t]           | ibase += 1;                         | :first:ws             |
+| :first:ws       | [\n]            |                                     | :nextline             |
+| :first:ws       | .               | set; has_a=1;                       | :data                 |
++-----------------+-----------------+-------------------------------------+-----------------------+
+| :data           | [\n]            | end; a >> s;                        | :nextline             |
+| :data           | .               |                                     | :data                 |
++-----------------+-----------------+-------------------------------------+-----------------------+
+| :nextline       | {$col > ibase}  | set; has_a=1;                       | :data                 |
+| :nextline       | [ \t]           |                                     | :nextline             |
+| :nextline       | [\n]            | set; end; a >> s;                   | :nextline             |
+| :nextline       | {$col <= ipar}  | <-;                                 | <return s>            | this line isn't indented enough- we're done.
+| :nextline       | .               | set; ibase=$col                     | :data                 |
++-----------------+-----------------+-------------------------------------+-----------------------+
+| {eof}           | {has_a}         | end; a >> s;                        | <return s>            |
+| {eof}           |                 | set; end; a >> s;                   | <return s>            |
++-----------------+-----------------+-------------------------------------+-----------------------+
+
+
+|<name> [<id>] .<class> .<class> :<key> <value> :<key> <value>   INLINE DATA
+
+
++-----------------+-----------------+-------------------------------------+-----------------------+
+| node()          |               |     | ipar=$col      | :first:type           |
 +-----------------+-----------------+-----+----------------+-----------------------+
-| document()[ll]  |                 | set |                | :toplevel             | acc=p_curr
+| :first:type     | [ \t]           |     |                | :first:ident          |
+| :first:type     | [\n]            |     |                | :children             |
+| :first:type     | [\[]            |     | s->id = neststr('[',']')| :first:ident |
+| :first:type     | .               | <-  | s->name = label()       | :first:ident |
 +-----------------+-----------------+-----+----------------+-----------------------+
-| :toplevel       | [\n]            | end | a>>s           | :toplevel             |
-| :toplevel       | [ \t]           |     |                | :toplevel             |
-| :toplevel       | [#]             |     |                | mcomment(); :toplevel |
-| :toplevel       | [|]             | set |                | node();     :toplevel |
-| :toplevel       | .               |     |                | :toplevel:data        |
+| :first:ident    | [ \t]           |     |                | :first:ident          |
+| :first:ident    | [\n]            |     |                | :children             |
+| :first:ident    | [\[]            |     | s->id = netstr('[',']') | :first:ident |
+| :first:ident    | [.]             |     | label() >> s->classes   | :first:ident |
+| :first:ident    | [:]             | ->;set| attkey= label()| :first:attr:val     |
+| :first:ident    | [#]             |     | skippast([\n])   | :children           |
+| :first:ident    | .               | set |                  | :first:data         |
 +-----------------+-----------------+-----+----------------+-----------------------+
-| :toplevel:data  | [\n]            | end | a>>s           | :toplevel             |
-| :toplevel:data  | .               |     |                | :toplevel:data        |
+| :first:data     | {eof?}          | end | s->text_value=a| <return s>            |
+| :first:data     | [\n]            | end | s->text_value=a| :children             |
+| :first:data     | [#]             | end | s->text_value=a;skippast([\n])| :children|
+| :first:data     | .               |     |                | :first:data           |
++-----------------+-----------------+-----+----------------+-----------------------+
+| :first:attr:val | {eof?}          |     |                | <return s>            |
 +-----------------+-----------------+-----+----------------+-----------------------+
 
+
 +-----------------+-----------------+-----+----------------+-----------------------+
-| mcomment()[ll]  |                 |     | ibase=$col+1   | :first:ws             |
-:                 :                 :     : ipar=$col      :                       :
+| {eof}           |                 |     |                | <return s>            |
 +-----------------+-----------------+-----+----------------+-----------------------+
-| :first:ws       | [ \t]           |     | ibase += 1     | :first:ws             |
-| :first:ws       | [\n]            |     |                | :nextline             |
-| :first:ws       | .               | set |                | :data                 |
-+-----------------+-----------------+-----+----------------+-----------------------+
-| :data           | [\n]            | end | a>>s           | :nextline             |
-| :data           | .               |     |                | :data                 |
-+-----------------+-----------------+-----+----------------+-----------------------+
-| :nextline       | 
 
