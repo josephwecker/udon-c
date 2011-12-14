@@ -17,11 +17,20 @@ setm         => $mark = $p_curr
 endm         => *$p_curr = 0; // null-terminate it
 @a           => $mark  // a for accumulator even though that's not really what we're doing...
 
+reserved:
+ * a
+ * s
+ * ch
+ * setm
+ * endm
+ * null
 
 TODO: when given [ \t] to match, strategize assuming that spaces are far more frequent.
 TODO: (see N1) in this situation where we now know which character matches, possibly jump into the middle of the                next state- know which one to go to...
 TODO: inline other grammar functions... probably possible (even at construction time) for all but recursive ones.
 TODO: add_attr needs to handle anonymous attributes well.
+
+TODO: just because it makes it easier anyway, attribute values are themselves nodes
 
 +-----------------------------------+--------------------------------------------------+-----------------------+
 | document()[ROOT]                  | $setm();                                         | :toplevel             |
@@ -62,8 +71,14 @@ TODO: add_attr needs to handle anonymous attributes well.
  |<name> [<id>] .<class> .<class> :<key> <value> :<key> <value>   INLINE DATA
 
 
+ |.. :key val :key val | some children data
+    :key val
+    :key val :key val moreval | more children data
+
+attrval - \n, |, label
+
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
-| node()[NODE]                      | ipar=$col;                                       | :first:type           |
+| node()[FULL_NODE]                 | ibase=$col+1; ipar=$col;                         | :first:type           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | :first:type     | ^[ \t\n\[.#:]   | @s.name = label_str();                           | :first:ident       | N1
 | :first:type     | .               |                                                  | :first:ident          |
@@ -73,20 +88,42 @@ TODO: add_attr needs to handle anonymous attributes well.
 | :first:ident    | [\[]            | ->; @s.id = nested_str('[',']');                 | :first:ident          |
 | :first:ident    | [.]             | ->; @s.append_class(label_str());                | :first:ident          |
 | :first:ident    | [:]             | ->; attkey = label();                            | :first:attr:val       |
-| :first:ident    | [#]             | $skip_past("\n");                                | :children             |
+| :first:ident    | [#]             | [\n]->;                                          | :children             |
 | :first:ident    | .               | $setm(); ->;                                     | :first:data           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | :first:data     | {eof?}          | $endm(); @s.val = @a;                            | <return @s>           |
 | :first:data     | [\n]            | $endm(); @s.val = @a;                            | :children             |
-| :first:data     | [#]             | $endm(); @s.val = @a; $skip_past("\n");          | :children             |
+| :first:data     | [#]             | $endm(); @s.val = @a; [\n]->;                    | :children             |
 | :first:data     | .               | ->;                                              | :first:data           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
-| :first:attr:val | {eof?}          | @s.add_attr(attkey, null);                       | <return @s>           |
+| :first:attr:val | {eof?}          |         @s.add_attr(attkey, null);               | <return @s>           |
 | :first:attr:val | [ \t]           | ->;                                              | :first:attr:val       |
-| :first:attr:val | [\n]            | ->; @s.add_attr(attkey, null);                   | :children             |
-| :first:attr:val | [#]             | $skip_past("\n"); @s.add_attr(attkey, null);     | :children             |
-| :first:attr:val | .               | @s.add_attr(attkey, label_str());                | :first:ident          |
+| :first:attr:val | [\n]            | ->;     @s.add_attr(attkey, null);               | :children             |
+| :first:attr:val | [#]             | [\n]->; @s.add_attr(attkey, null);               | :children             |
+| :first:attr:val | .               |         @s.add_attr(attkey, label_str());        | :first:ident          |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :children       | {$col > ibase && @ch.type == TEXT} | $setm(); 
+| :children       | [ \t]           | ->;                                              | :children             |
+| :children       | [\n]            | ->; @ch << TEXT("");                             | :children             |
+| :children       | [#]             | [\n]->;                                          | :children             |
+| :children       | {$col <= ipar}  |                                                  | <return @s>           |
+| :children       | [:]             | ->; attkey = label();                            | :children:attr:v      |
+| :children       | [|]             | ->; @ch << node();                               | :children             |
+| :children       | .               | ibase=$col;$setm();->[\n];$endm();@ch<<@a;->;    | :children:t           |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+# Just like :children, but when the last child was text- so if indented more it's just more text...            |
+| :children:t     | {$col > ibase}  | $setm(); ->[\n]; $endm(); @ch << @a; ->;         | :children:t           |
+| :children:t     | [ \t]           | ->;                                              | :children:t           |
+| :children:t     | [\n]            | ->; @ch << TEXT("");                             | :children:t           |
+| :children:t     | [#]             | [\n]->;                                          | :children             |
+| :children:t     | {$col <= ipar}  |                                                  | <return @s>           |
+| :children:t     | [:]             | ->; attkey = label();                            | :children:attr:v      |
+| :children:t     | [|]             | ->; @ch << node();                               | :children             |
+| :children:t     | .               | $setm(); ->[\n];$endm();@ch<<@a;->;              | :children:t           |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| :children:attr:v | [\n]           | ->; @s.add_attr(attkey, null);                   | :children             |
+| :children:attr:v | [ \t]          | ->;                                              | :children:attr:v      |
+| :children:attr:v | ["]            | @s.add_attr(attkey
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | {eof}           |                 |                                                  | <return @s>           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
