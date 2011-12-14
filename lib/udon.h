@@ -7,15 +7,48 @@
 
 // enum of different child types for identifying them in the linked-list
 
-enum UDON_NODE_TYPE {
-  UDON_TEXT_NODE,
-  UDON_FULL_NODE
+enum UdonType {
+  NODE,
+  TEXT,
+  ATTR_VALUE,
+  CLASS,
+  PARENT,
+  COMMENT,
+  FULL
 };
 
-typedef struct LLIST_ {
-  void                   *value;
-  struct LLIST_          *next;
-} llist;
+struct UdonNode {
+    enum UdonType        node_type;
+    uint64_t             source_line;
+    uint64_t             source_col;
+    void                 *v;
+    struct UdonNode      *next;
+};
+
+typedef struct UdonNode  UdonNode;
+typedef struct UdonNode  UdonTextNode;
+typedef struct UdonNode  UdonAttrValueNode;
+typedef struct UdonNode  UdonClassNode;
+
+struct UdonParentNode {
+    struct UdonNode      base;
+    UdonNode             *children;
+};
+
+typedef struct UdonParentNode UdonParentNode;
+typedef struct UdonParentNode UdonCommentNode;
+
+typedef struct _UdonAttributes {
+
+} UdonAttributes;
+
+struct UdonFullNode {
+    struct UdonNodeParent     base;
+    UdonClass                 *classes;
+    
+};
+
+
 
 typedef struct UDON_NODE_ {
     /* Basic metadata */
