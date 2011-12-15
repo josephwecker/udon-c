@@ -14,6 +14,31 @@ far.)
                     #  level...)
 No such thing as embedded "simple" attribute- grims only.
 
+## SCALARS
+### Strings
+* LABEL: (Restricted-non-delimited)
+    - APPLIES TO: node-name, class-name, attribute-key
+    - STOPS ON: whitespace or [|\[.]
+    - (but allows, incedentally, embedded [#!:] unless there's a compelling
+      reason at some point to dissallow it)
+* VALUE: Non-delimited scalars including text
+    - APPLIES TO: attribute-values, on-line node data, after '| '
+    - STOPS ON: newline or space __plus__ [|#.!:]
+* PROTECTED/SHIELDED: parenthasese-delimited label or value
+    - APPLIES TO: can be in place of labels or values
+    - STOPS ON: last matched close-parenth
+    - PROBLEM: if you want an unmatched parenth (like in quotes; ")" for
+      example) you're out of luck in label contexts. Use freeform in value
+      contexts (possibly need grim attributes if it's an attribute value).
+    - Can be interpreted as simple potentially nested tuples or lists
+    - And heck, why not. let them start part-way in to a label or value
+* FREEFORM: any time text starts its own line. Indentation rules still apply.
+
+* NULL: when attribute value or a label is missing, or specified with --|~|null
+  (??)
+
+See undecided for other stuff...
+
 ## LABELS
 anything-up-to-a-whitespace-character-or-pipe
 (same, but nested parenthasese (honored) and now spaces allowed)
@@ -29,6 +54,10 @@ all ':' attributes are "simple" - label for key & label for value [called into
 question- other kinds of scalars...]
 ':|' attributes (grim attributes) are like nodes except the node-name is in the
      attributes of its parent
+
+If you need a freeform text value - for example, unbalanced parenths, you need
+to use a grim attribute and put the text, indented appropriately, on the next
+line.
 
 ## GRIM ATTRIBUTES
 * Act just like nodes except what would be the "node-name" isn't a child of the
@@ -51,8 +80,14 @@ beginning of a node (or grim attribute)
 Unknown: directives treated like nodes? Probably. (see below)
 
 ## NODES
-If a '|' is followed by a space, It no longer deliniates a node, but instead
-deliniates a SIMPLE VALUE
+* If a '|' is followed by a space, It no longer deliniates a node, but instead
+  deliniates a SIMPLE VALUE (which are undecided... doh)
+* If a '|' (or grim) is followed directly by an id, class, attribute key, or
+  another pipe (node beginning), it is a normal node with a null/anonymous
+  name. (used for "implied" nodes, like divs.)
+* '|[]' would be an anonymous node with no id or classes - if you want to give
+  it immediate simple data, you could do this also: '|| some data' (probably
+  the more clear alternative)
 
 ## DIRECTIVES
 not much decided yet (see below), but indentation-rules etc. will very likely
@@ -82,15 +117,37 @@ be exactly the same as nodes.
 ## PARSER
 * Warnings w/ severity as a separate structure returned that the implementation
   can decide what to do with.
-
+* Ability to supress specific warning messages
 
 ---------------------------------------------------------------------------
 # UNDECIDED
 quick note on some unresolved issues / un-solidified decisions...
 ---------------------------------------------------------------------------
+## IMPORTANT UNDECIDED
+* best, simplest way to have free text where indentation does _not_ apply,
+  and/or that protects from udon structures being parsed:
+  * yaml-like?
+  * heredoc-like?
+  * directive only? !{` .... `}
+
+
+
+
+## Philisophical
 * Do all these rules and complexities mean that I've absolutely completely
   missed the mark? Or are they elegent, almost ideally optimized compromises
   with the nature of the data being represented?
+* Borrow terms from other object notations / markups? (like "tag", "object",
+  "class" ...)
+* Could it be more unified if everything was a directive and nodes, attributes,
+  etc., were syntactic sugar for special kinds of directives? (muahahaha.
+  scary.)
+
+[meta - distinguish between:
+ * has undefined behavior or puts system in a bad state
+ * has defined behavior that possibly isn't ideal
+ * has defined behavior that seems to be the desired behavior
+]
 
 ## LABELS / VALUES
 * Delimiters other than () in labels? / simple-values?
@@ -121,8 +178,22 @@ quick note on some unresolved issues / un-solidified decisions...
  #{...}              # Embedded comment. You know you love it. But would then
                        be impossible to use well w/ Ruby.
 
+ nah, we should do |{#        }
+
+ what about a simplification for line-ending comments though?
+
+ and here is some normal text blah blah    #| comment even though I'm in freetext
+
+ meh... probably opens a can of worms...
+
 ## NODES
 * Allow attributes of a node to continue to be scattered all over the place?
+* Is this meaningful:
+    |hello
+      here is some text
+        |am I a node? whose node am I? The texts? |hello's with a warning?
+          interpreted simply as text, with warning?
+* Class assignments on their own line?
 
 ## PARSING
 * Error on tab/space mixing?
@@ -141,16 +212,17 @@ quick note on some unresolved issues / un-solidified decisions...
   attribute shorthand...
 
 ## SCALARS (simple values)
-* String delimited with (nested) parenthasese
-* String delimited with (nested) square brackets
-* String for the rest of the line
-* String until a ' |', ' :', ' !', ' #'
-* String until a '|', ':', '!', '#', '.', or '[' (like tag name)
-* CStrings
-* Label / Atom
+* Should we actually parse shielded nesting? (since we will need to use
+  pushdown automata for nesting anyway...) Have it pre-parsed as s-expression?
+* Can a free-form line can be a shielded instead...
 
-Thought
-
+### Future scalars ???
+(some mentioned above in "IMPORTANT UNDECIDED" - like where udon doesn't get
+interpreted, etc.)
+* String (other than ID) delimited with (nested) square brackets
+* Atom / symbolic / label type
+* (future (?)) Quote delimited ... possibly don't need because it would be used
+  rarely enough that directives would work fine for it...
 * Booleans
 * Null
 * Dates

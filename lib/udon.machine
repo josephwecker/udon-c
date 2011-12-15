@@ -1,4 +1,5 @@
-
+TODO: order by frequency! (even estimate frequency)
+TODO: deal with 0 bytes in source (transform in such a way that the parser can still use c-strings. Use declarative strings instead/in addition?)
 TODO: use machine node-name and state names in resulting structure where appropriate:
     * line | column
     * grammar_part | type | state
