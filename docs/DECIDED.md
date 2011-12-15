@@ -32,6 +32,7 @@ No such thing as embedded "simple" attribute- grims only.
       contexts (possibly need grim attributes if it's an attribute value).
     - Can be interpreted as simple potentially nested tuples or lists
     - And heck, why not. let them start part-way in to a label or value
+    - EXAMPLE: (this is all |(part of a) :single (label))
 * FREEFORM: any time text starts its own line. Indentation rules still apply.
 
 * NULL: when attribute value or a label is missing, or specified with --|~|null
@@ -39,15 +40,6 @@ No such thing as embedded "simple" attribute- grims only.
 
 See undecided for other stuff...
 
-## LABELS
-anything-up-to-a-whitespace-character-or-pipe
-(same, but nested parenthasese (honored) and now spaces allowed)
-
-(this is all |(part of a) :single (label))  # unknown: allow embedded? maybe at least !{...}?
-
-
-(I'll probably call these "SimpleValues" or something in the future and have it
-be a superset/subset of other scalar data types?)
 
 ## ATTRIBUTES
 all ':' attributes are "simple" - label for key & label for value [called into
@@ -119,6 +111,8 @@ be exactly the same as nodes.
   can decide what to do with.
 * Ability to supress specific warning messages
 
+
+
 ---------------------------------------------------------------------------
 # UNDECIDED
 quick note on some unresolved issues / un-solidified decisions...
@@ -154,7 +148,7 @@ quick note on some unresolved issues / un-solidified decisions...
 * All the '..' vs ".." vs `..` stuff.
 * In labels, ever allow/care about escaped values?
 * Parse simple scalars?
-* Allow embeds?
+* Allow embeds? Maybe at least !{...}?
 
 ## DIRECTIVES (for text)
 * What !{'...'} might or might not be useful for...
