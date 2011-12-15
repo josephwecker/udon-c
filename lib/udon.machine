@@ -32,6 +32,8 @@ TODO: add_attr needs to handle anonymous attributes well.
 
 TODO: just because it makes it easier anyway, attribute values are themselves nodes
 
+TODO: [\n] implies eol as well?
+
 +-----------------------------------+--------------------------------------------------+-----------------------+
 | document()[ROOT]                  | $setm();                                         | :toplevel             |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
@@ -68,14 +70,68 @@ TODO: just because it makes it easier anyway, attribute values are themselves no
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 
 
- |<name> [<id>] .<class> .<class> :<key> <value> :<key> <value>   INLINE DATA
+ |<name> [<id>] .<class> .<class> :<key> <value> :<key> <value> |>  INLINE DATA
 
+attr-value-state
+data-state
+attr-child-state
 
- |.. :key val :key val | some children data
+ |sometag :key1 val :key2 value of blah |> some children data
     :key val
-    :key val :key val moreval | more children data
+    :key val :key val moreval |> more children data of sometag
+    :key value of key...
 
 attrval - \n, |, label
+
+
+':'->getting label
+' '->finish getting label
+
+
+#   |> == \n+base+indent(to current spot) , so it's as if saying "pretend this is this same col but on the next line.
+
+
+#   |something :attr the value :another great value|> and now what
+#
+#   |something :attr the value |> |child-node |> some stuff
+#   ==
+#   |something :attr the value
+#                                 |child-node
+#                                                some stuff
+#
+#   PROBLEM: it's most natural to have successive inline to mean deeper
+#   nesting, BUT it confuses multiple attributes and has no way to express the
+#   opposite...  BUT... having them all apply to original is also very
+#   confusing...
+#
+#   |something :attr the value |something else :blah hey | huh?
+
+    |something :{attr the value |something else :blah hey | huh?}
+    |something :attr the value |{something else :blah hey | huh?}   -> equivalent to no brackets
+    |something :blah{ ... }  # ??
+
+    |blah|blah|blah
+
+    
+    PROBLEM:
+    |the-tag :some-attribute it's value :another-attribute it's value 
+
+    which special case method do we use???
+    * inline-key, has value, see another key
+    * all attributes are single value only unless bracketed    :attr part-of-value not-part-of-value
+    * all attributes are simple value only unless bracketed    :attr part-of-value me-too [:|]not
+    * one of the above, but doesn't apply anymore if it's an attribute that starts on its own line?
+    * have complex attributes vs simple attributes?  YESSS
+
+    :|complex-attribute    <--- retains "the only one with that key in parent", but otherwise acts like a normal node there.
+
+
+#
+#   * ATTRIBUTES APPLY TO THE CURRENT NORMAL-NODE ALWAYS UNLESS 
+#   * IF THERE ARE ONLY ATTRIBUTE KEYS TO THE LEFT, IT APPLIES TO THE FIRST ATTRIBUTE KEY
+#   * INLINE ATTRIBUTES CANNOT HAVE COMPLEX VALUES
+#   * ATTRIBUTE VALUES MUST ESCAPE THE PIPE SYMBOL IF THEY WANT IT
+#
 
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | node()[FULL_NODE]                 | ibase=$col+1; ipar=$col;                         | :first:type           |
@@ -87,7 +143,8 @@ attrval - \n, |, label
 | :first:ident    | [\n]            | ->;                                              | :children             |
 | :first:ident    | [\[]            | ->; @s.id = nested_str('[',']');                 | :first:ident          |
 | :first:ident    | [.]             | ->; @s.append_class(label_str());                | :first:ident          |
-| :first:ident    | [:]             | ->; attkey = label();                            | :first:attr:val       |
+| :first:ident    | [:]             | ->; attributes(*@s.attributes);                  | :children             |
+## REMOVE ME ##| :first:ident    | [:]             | ->; attkey = label();                            | :first:attr:val       |
 | :first:ident    | [#]             | [\n]->;                                          | :children             |
 | :first:ident    | .               | $setm(); ->;                                     | :first:data           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
@@ -95,19 +152,19 @@ attrval - \n, |, label
 | :first:data     | [\n]            | $endm(); @s.val = @a;                            | :children             |
 | :first:data     | [#]             | $endm(); @s.val = @a; [\n]->;                    | :children             |
 | :first:data     | .               | ->;                                              | :first:data           |
-+-----------------+-----------------+--------------------------------------------------+-----------------------+
-| :first:attr:val | {eof?}          |         @s.add_attr(attkey, null);               | <return @s>           |
-| :first:attr:val | [ \t]           | ->;                                              | :first:attr:val       |
-| :first:attr:val | [\n]            | ->;     @s.add_attr(attkey, null);               | :children             |
-| :first:attr:val | [#]             | [\n]->; @s.add_attr(attkey, null);               | :children             |
-| :first:attr:val | .               |         @s.add_attr(attkey, label_str());        | :first:ident          |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :first:attr:val | {eof?}          |         @s.add_attr(attkey, null);               | <return @s>           |
+#| :first:attr:val | [ \t]           | ->;                                              | :first:attr:val       |
+#| :first:attr:val | [\n]            | ->;     @s.add_attr(attkey, null);               | :children             |
+#| :first:attr:val | [#]             | [\n]->; @s.add_attr(attkey, null);               | :children             |
+#| :first:attr:val | .               |         @s.add_attr(attkey, label_str());        | :first:ident          |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 #| :children       | {$col > ibase && @ch.type == TEXT} | $setm(); 
 | :children       | [ \t]           | ->;                                              | :children             |
 | :children       | [\n]            | ->; @ch << TEXT("");                             | :children             |
 | :children       | [#]             | [\n]->;                                          | :children             |
 | :children       | {$col <= ipar}  |                                                  | <return @s>           |
-| :children       | [:]             | ->; attkey = label();                            | :children:attr:v      |
+#| :children       | [:]             | ->; attkey = label();                            | :children:attr:v      |
 | :children       | [|]             | ->; @ch << node();                               | :children             |
 | :children       | .               | ibase=$col;$setm();->[\n];$endm();@ch<<@a;->;    | :children:t           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
@@ -117,14 +174,34 @@ attrval - \n, |, label
 | :children:t     | [\n]            | ->; @ch << TEXT("");                             | :children:t           |
 | :children:t     | [#]             | [\n]->;                                          | :children             |
 | :children:t     | {$col <= ipar}  |                                                  | <return @s>           |
-| :children:t     | [:]             | ->; attkey = label();                            | :children:attr:v      |
+#| :children:t     | [:]             | ->; attkey = label();                            | :children:attr:v      |
 | :children:t     | [|]             | ->; @ch << node();                               | :children             |
 | :children:t     | .               | $setm(); ->[\n];$endm();@ch<<@a;->;              | :children:t           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
-| :children:attr:v | [\n]           | ->; @s.add_attr(attkey, null);                   | :children             |
-| :children:attr:v | [ \t]          | ->;                                              | :children:attr:v      |
-| :children:attr:v | ["]            | @s.add_attr(attkey
+#| :children:attr:v | [\n]           | ->; @s.add_attr(attkey, null);                   | :children             |
+#| :children:attr:v | [ \t]          | ->;                                              | :children:attr:v      |
+#| :children:attr:v | ["]            | @s.add_attr(attkey
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | {eof}           |                 |                                                  | <return @s>           |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
+
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#|attributes(att)[att]               | ipar=$col;                                       | :key                  |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :key            |                 | attr_key = label_str(); @s.keys << attr_key;     | :values:start         |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :values:start   | [ \t]           | ->;                                              | :values:start         |
+#| :values:start   | [\n]            | ->; @s.add_pair(attr_key, null);                 | <return>              |
+#| :values:start   | [:]             | ->; @s.add_pair(attr_key, null);                 | :key                  |
+#| :values:start   | [|]             | ->;                                              | :a_done:no_key        |
+#| :values:start   | [#]             | [\n]->; @s.add_pair(attr_key, null);             | <return>              |
+#| :values:start   | .               | $setm(); ->[ \t\n];                              | :values               |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :a_done:no_key  | [>]             | ->; @s.add_pair(attr_key, @a);                   | <return>              |
+#| :a_done:no_key  | .               | <-; $setm(); ->[ \t\n];                          | :values               |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :values         | [\n]            | $endm(); @s.add_pair(attr_key, @a);              | <return>              |
+#| :values         | [ \t]           | ->;                                              | :values               |
+#| :values         | [#]             | $endm(); @s.add_pair(attr_key, @a); ->[\n];      | <return>              |
+#| :values         | [:]             | ->;
 
