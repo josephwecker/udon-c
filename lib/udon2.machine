@@ -1,0 +1,140 @@
+
+New:
+ * Order choices by frequency, or estimate frequency ratios
+ * Specially designate only local variables and global functions
+ * Less awkward $p_curr, $mark, @a, setm, endm
+ * Follows new "decided"
+ * Robust newline & character encoding handling
+ * More clear eof-as-newline handling (?)
+ * More commentary
+ * Override initial state (specified becomes default)
+
+
+###  Reserved  ###
+ col      => column number (1-indexed)
+ row      => row number (1-indexed)
+ curr     => current position in parse buffer
+ s        => self node
+ α       => accumulator
+ c        => children. acts specially with '<<' below.
+ if       => if(condition, true-action, false-action)
+ ⌞__      => (or "acc.start(__)")start accumulating
+ __⌟      => (or "acc.term(__)") replace current position w/ end-marker for string
+ ⌀        => (or "null")     null value - not the same as empty
+ ￫        => advance by one character (byte?)
+ ￫[..]    => advance up to one of the following characters
+ [..]￫    => advance just past one of the preceeding characters
+ ￩        => go back one character (byte?)
+ __ << __ => append right value to left value. If linked list, right value is new left value.
+ ^__      => create a new one of those
+ >>       => continue with current state
+
+
+
+#-------- root ----------
+#  Essentially a full node, but doesn't start with a pipe so doesn't have a way
+#  in the document to specify the name etc. in the normal way. Unlike most
+#  other parts of the machine, this doesn't have a starting structure- it
+#  delegates that to node().
++-----------------------------------+--------------------------------------------------+-----------------------+
+| root()[⌀]                         | s = node(init=:child:shortcut)                   | <return s>            |
++-----------------------------------+--------------------------------------------------+-----------------------+
+      # Start with nothing - go to node() to initialize, but start it at
+      # newline instead of identity-line
+
+
+#-------- node ----------
+#  Either a full-featured building block, with name, id, classes, attributes,
+#  and children, or a value if the first character is whitespace. Or it could
+#  also be a root-node if it jumps straight into the post-initialize state.
+
+# _ibase_ tells later lines that this is where our data begins- in some
+#   cases it is set to something else even though we're in the same
+#   node (see comments)
+# _ipar_ is more important- it is used on subsequent lines when text
+#   starts to say that our node is done. Kind of "parent's indent level."
++-----------------------------------------------------+-----------------------------------------------+-----------------------+
+| node()[⌀]                                           | inline=F | ibase = col | ipar = col-1         | :initialize           |
++-----------------------------------------------------+-----------------------------------------------+-----------------------+
+# initialize figuring out what kind of node it is, grabbing the name if
+# appropriate, and continuing with identity parts if it is a full node.
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| :initialize       | [ ]/20[\n]/1[\t]/5 | /value     | ￫ | s = value_node()                          | <return s>            |
+| :initialize       | [\[]/10            | /id        | s = ^UdonFullNode                             | :identity /id         |
+| :initialize       | [|] /1             | /child     | s = ^UdonFullNode                             | :child /node          |
+| :initialize       | [.] /7             | /class     | s = ^UdonFullNode                             | :identity /class      |
+| :initialize       | [{] /1             | /embed     | e = "embedded nodes not supported yet"        | <err e>               |
+| :initialize       | [:] /20            | /attr      | ￫ | s = ^UdonFullNode                         | :attribute            |
+| :initialize       | [(] /5             | /protected | s = ^UdonFullNode | s.name=protected()        | :identity             |
+| :initialize       | ɛ   /30            | /name      | s = ^UdonFullNode | s.name=label()            | :identity             |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+# TODO: if desired, you could have a ":identity:after-id" where the id has
+# already been entered so the probabilities change significantly to bias toward
+# classes etc.
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| :identity         | [ ]/20 [\t]/1      | /leading   | ￫                                             | >>                    |
+| :identity         | [\[]/15            | /id        | s.id = protected("[]")                        | >>                    |
+| :identity         | [.] /15            | /class     | ￫ | s.classes << label()                      | >>                    |
+| :identity         | ɛ   /49            | /child     |                                               | :child                |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+# Only used right now by the root node so that it can jump into the middle here
+# and ensure that there is an object associated with s.
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| :child:shortcut   |                    |            | s = ^UdonFullNode                             | :child                |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+# Basic child iteration. We know we're finished when it hits something other
+# than whitespace or a comment that is on a column that's "a parent column" -
+# which is to say, a de-dented line.  [Currently not saving comments]
+# These assume that there is the attr(key,value) function available for s.
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| :child            | [ ] /30 [\t]/5     | /leading   | ￫                                             | >>                    |
+| :child            | [\n]/10            | /newline   | ￫ | if(!inline, c << ^UdonBlank) | inline=F   | >>                    |
+| :child            | [#] /10            | /comment   | comment_node()                                | >>                    |
+| :child            | {col <= ipar}      | /not-ours  |                                               | <return s>            |
+| :child            | [:] /10            | /attribute | ￫                                             | :attribute            |
+| :child            | [|] /15            | /node      | ￫ | c << node()                               | >>                    |
+| :child            | ɛ   /20            | /value     | c << if(inline, value_node(), data_node())    | >>                    |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| :attribute        | [|] /20            | /grim      | ￫ | grim=node() | s.attr(grim.name, grim)     | :child                |
+| :attribute        | [\[]/5             | /grim      |     grim=node() | s.attr(grim.name, grim)     | :child                |
+| :attribute        | ɛ/75               | /simple    | key=label() | v=value_node() | s.attr(key,v)  | :child                |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+
+# Note that this is possibly destructive (?) in that it marks a character to be
+# the string delimiter in some implementations even though there's the (remote)
+# possibility that it will still be inspected later. Genmachine will hopefully
+# detect when an allocation is necessary.
++-----------------------------------------------------+-----------------------------------------------+-----------------------+
+| inline label()[]                                    |                                               | :main                 |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| :main             |                    |            | ⌞α| ￫[ \t\n|.!(]                             | :break/[predict]      |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| :break            | [(]/3              | /protected | ￫ | lvl = 1                                   | :protected            |
+| :break            | ɛ/97               | /done      | α⌟                                           | <return α>           |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| :protected        | [)]/10 {lvl==1}    | /pro-done  | ￫ | α⌟                                       | <return α>           |
+| :protected        | [)]/10             | /unnest    | ￫ | lvl -= 1                                  | >>                    |
+| :protected        | [(]/10             | /nest      | ￫ | lvl += 1                                  | >>                    |
+| :protected        | ɛ/80               | /collect   | ￫                                             | >>                    |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+
+# TODO: how to "backtrack"-delimit when newline + dedent?
++-----------------------------------------------------+-----------------------------------------------+-----------------------+
+| inline value_node()[]                               | ibase = col | ipar = col-1 | ⌞α              | :main                 |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| :main             | [ ]/10 [\t]/1      | /space     | ￫                                             | :next                 |
+| :main             | [\n]/5             | /newline   | ￫ | eol=curr                                  | :newline              |
+| :main             | ɛ/84               | /collect   | ￫                                             | >>                    |
++-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
+| 
+
+
++-----------------------------------------------------+-----------------------------------------------+-----------------------+
+| data_node()[]                                       | ibase = col | ipar = col-1                    | :initialize           |
++-----------------------------------------------------+-----------------------------------------------+-----------------------+
+
++-----------------------------------------------------+-----------------------------------------------+-----------------------+
+| comment_node()[]                                    | ibase = col | ipar = col-1                    | :initialize           |
++-----------------------------------------------------+-----------------------------------------------+-----------------------+
+
+# TODO - build some sort of markov chain based on probabilities and flow... optimize C for it...
