@@ -2,6 +2,7 @@
 #define UDON_PARSING_H
 
 #define _XOPEN_SOURCE 700
+#define _REENTRANT
 
 #define UNPACK_STATE()       uint64_t *qcurr = state->p_quick; \
                              char     *curr  = state->p_curr;  \
@@ -31,5 +32,24 @@
                              curr=(char *)qcurr;     \
                              while((curr <= eof) && (*curr != (c1)) && (*curr != (c2)) && (*curr != (c3)))\
                                  curr++;
+
+#ifdef _UDON_NONSTANDARD_MEMORY
+#ifdef __cplusplus
+extern "C" {
+#endif
+  void *udon_calloc(size_t count, size_t size);
+  void *udon_malloc(size_t size);
+  void  udon_free(void *ptr, size_t size);
+#ifdef __cplusplus
+}
+#endif
+#else
+
+#define udon_calloc(count,size) calloc(count,size)
+#define udon_malloc(size)       malloc(size)
+#define udon_free(ptr,size)     free(ptr)
+
+#endif
+
 
 #endif

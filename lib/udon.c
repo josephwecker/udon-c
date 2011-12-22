@@ -6,6 +6,7 @@
  */
 
 #define _XOPEN_SOURCE 700
+#define _REENTRANT
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,24 +17,23 @@
 #include <stdint.h>
 #include <sysexits.h>
 #include <err.h>
-//#include <malloc.h>
 
 #include "udon.h"
 #include "udon_parsing.h"
 #include "hsearch.h"
 
-void reset_state(pstate *state) {
+void udon_reset_state(pstate *state) {
     state->p_curr   = state->p_start;
     state->p_quick  = (uint64_t *) state->p_start;
 }
 
-pstate *init_from_file(char *filename) {
+pstate *udon_init_from_file(char *filename) {
     ssize_t bytes_read;
     int     fd;
     struct  stat statbuf;
     pstate *state;
 
-    if( (state = (pstate *) malloc(sizeof(pstate))) == NULL)
+    if( (state = (pstate *) udon_malloc(sizeof(pstate))) == NULL)
         err(EX_OSERR, "Couldn't allocate memory for parser state.");
     if( (fd = open(filename, O_RDONLY)) < 0)
         err(EX_NOINPUT, "Couldn't open %s.", filename);
@@ -46,7 +46,7 @@ pstate *init_from_file(char *filename) {
     state->filename = filename;
     
     // padding to the right so that quickscan stuff can look in bigger chunks
-    if( (state->p_start = (char *) malloc(state->size+8)) == NULL)
+    if( (state->p_start = (char *) udon_malloc(state->size+8)) == NULL)
         err(EX_OSERR, "Couldn't allocate memory for file contents (%s).", filename);
 
     if( (bytes_read = read(fd, state->p_start, state->size)) != state->size)
@@ -60,20 +60,20 @@ pstate *init_from_file(char *filename) {
     return state;
 }
 
-void free_state(pstate *state) {
+void udon_free_state(pstate *state) {
     if(state != NULL) {
-        if(state->p_start != NULL) free(state->p_start);
+        if(state->p_start != NULL) udon_free(state->p_start, state->size);
         state->p_start = NULL;
-        free(state);
+        udon_free(state, sizeof(pstate));
     }
 }
 
-int parse(pstate *state) {
-    //mallopt(
+int udon_parse(pstate *state) {
     UNPACK_STATE();
     return toplevel(state);
 }
 
+/*
 int toplevel(pstate *state) {
     UNPACK_STATE();
     int found = 0;
@@ -109,4 +109,4 @@ int next_value(pstate *state) {
     UNPACK_STATE();
     //skipwhites();
 
-}
+} */
