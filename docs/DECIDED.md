@@ -18,12 +18,12 @@ No such thing as embedded "simple" attribute- grims only.
 ### Strings
 * LABEL: (Restricted-non-delimited)
     - APPLIES TO: node-name, class-name, attribute-key
-    - STOPS ON: whitespace or [|\[.]
-    - (but allows, incedentally, embedded [#!:] unless there's a compelling
+    - STOPS ON: whitespace or [|\[.!]
+    - (but allows, incedentally, embedded [#:] unless there's a compelling
       reason at some point to dissallow it)
 * VALUE: Non-delimited scalars including text
     - APPLIES TO: attribute-values, on-line node data, after '| '
-    - STOPS ON: newline or space __plus__ [|#.!:]
+    - STOPS ON: dedented newline or space __plus__ [|#.!:]
 * PROTECTED/SHIELDED: parenthasese-delimited label or value
     - APPLIES TO: can be in place of labels or values
     - STOPS ON: last matched close-parenth
@@ -45,7 +45,8 @@ See undecided for other stuff...
 all ':' attributes are "simple" - label for key & label for value [called into
 question- other kinds of scalars...]
 ':|' attributes (grim attributes) are like nodes except the node-name is in the
-     attributes of its parent
+     attributes of its parent. Alternately, you can jump into the id part, as
+     in: ':[...] ...'
 
 If you need a freeform text value - for example, unbalanced parenths, you need
 to use a grim attribute and put the text, indented appropriately, on the next
@@ -73,7 +74,7 @@ Unknown: directives treated like nodes? Probably. (see below)
 
 ## NODES
 * If a '|' is followed by a space, It no longer deliniates a node, but instead
-  deliniates a SIMPLE VALUE (which are undecided... doh)
+  deliniates a SIMPLE VALUE
 * If a '|' (or grim) is followed directly by an id, class, attribute key, or
   another pipe (node beginning), it is a normal node with a null/anonymous
   name. (used for "implied" nodes, like divs.)

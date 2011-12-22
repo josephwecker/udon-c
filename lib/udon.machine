@@ -1,13 +1,4 @@
 TODO: order by frequency! (even estimate frequency)
-TODO: deal with 0 bytes in source (transform in such a way that the parser can still use c-strings. Use declarative strings instead/in addition?)
-TODO: use machine node-name and state names in resulting structure where appropriate:
-    * line | column
-    * grammar_part | type | state
-TODO: basic struct inheritance for fewer wasted fields.
-
-
-## <struct>~    =>  <data>->first_child
-## <struct>'    =>  <data>->next
 
 <struct> << <struct> => either set first_child of left or set the tail child and advance that to tail.
 @<struct>    => indicates a struct that acts across states in the same function / predefined/reserved vars
@@ -26,15 +17,8 @@ reserved:
  * endm
  * null
 
-TODO: when given [ \t] to match, strategize assuming that spaces are far more frequent.
 TODO: (see N1) in this situation where we now know which character matches, possibly jump into the middle of the                next state- know which one to go to...
-TODO: inline other grammar functions... probably possible (even at construction time) for all but recursive ones.
-TODO: add_attr needs to handle anonymous attributes well.
-
-TODO: just because it makes it easier anyway, attribute values are themselves nodes
-
-TODO: [\n] implies eol as well?
-
+ start cond         input     acc      code                                             transition
 +-----------------------------------+--------------------------------------------------+-----------------------+
 | document()[ROOT]                  | $setm();                                         | :toplevel             |
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
@@ -71,68 +55,6 @@ TODO: [\n] implies eol as well?
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 
 
- |<name> [<id>] .<class> .<class> :<key> <value> :<key> <value> |>  INLINE DATA
-
-attr-value-state
-data-state
-attr-child-state
-
- |sometag :key1 val :key2 value of blah |> some children data
-    :key val
-    :key val :key val moreval |> more children data of sometag
-    :key value of key...
-
-attrval - \n, |, label
-
-
-':'->getting label
-' '->finish getting label
-
-
-#   |> == \n+base+indent(to current spot) , so it's as if saying "pretend this is this same col but on the next line.
-
-
-#   |something :attr the value :another great value|> and now what
-#
-#   |something :attr the value |> |child-node |> some stuff
-#   ==
-#   |something :attr the value
-#                                 |child-node
-#                                                some stuff
-#
-#   PROBLEM: it's most natural to have successive inline to mean deeper
-#   nesting, BUT it confuses multiple attributes and has no way to express the
-#   opposite...  BUT... having them all apply to original is also very
-#   confusing...
-#
-#   |something :attr the value |something else :blah hey | huh?
-
-    |something :{attr the value |something else :blah hey | huh?}
-    |something :attr the value |{something else :blah hey | huh?}   -> equivalent to no brackets
-    |something :blah{ ... }  # ??
-
-    |blah|blah|blah
-
-    
-    PROBLEM:
-    |the-tag :some-attribute it's value :another-attribute it's value 
-
-    which special case method do we use???
-    * inline-key, has value, see another key
-    * all attributes are single value only unless bracketed    :attr part-of-value not-part-of-value
-    * all attributes are simple value only unless bracketed    :attr part-of-value me-too [:|]not
-    * one of the above, but doesn't apply anymore if it's an attribute that starts on its own line?
-    * have complex attributes vs simple attributes?  YESSS
-
-    :|complex-attribute    <--- retains "the only one with that key in parent", but otherwise acts like a normal node there.
-
-
-#
-#   * ATTRIBUTES APPLY TO THE CURRENT NORMAL-NODE ALWAYS UNLESS 
-#   * IF THERE ARE ONLY ATTRIBUTE KEYS TO THE LEFT, IT APPLIES TO THE FIRST ATTRIBUTE KEY
-#   * INLINE ATTRIBUTES CANNOT HAVE COMPLEX VALUES
-#   * ATTRIBUTE VALUES MUST ESCAPE THE PIPE SYMBOL IF THEY WANT IT
-#
 
 +-----------------+-----------------+--------------------------------------------------+-----------------------+
 | node()[FULL_NODE]                 | ibase=$col+1; ipar=$col;                         | :first:type           |
