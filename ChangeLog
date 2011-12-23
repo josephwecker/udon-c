@@ -1,3 +1,7 @@
+[2011-12-23 | a5c29ee | <joseph.wecker@gmail.com>]  Clearing out. Start again.
+
+[2011-12-23 | d293b1f | <joseph.wecker@gmail.com>]  Bump minor version and some quick updates.
+
 [2011-12-22 | cf6fe1d | <joseph.wecker@gmail.com>]  Move genmachine state machine definitions out of main source dir
 
 [2011-12-22 | ad1cef6 | <joseph.wecker@gmail.com>]  specialized memory handling, fixed namespacing, and starting on main parsing template.
