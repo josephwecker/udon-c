@@ -1,3 +1,35 @@
+[2011-12-22 | cf6fe1d | <joseph.wecker@gmail.com>]  Move genmachine state machine definitions out of main source dir
+
+[2011-12-22 | ad1cef6 | <joseph.wecker@gmail.com>]  specialized memory handling, fixed namespacing, and starting on main parsing template.
+
+[2011-12-22 | 4e3192a | <joseph.wecker@gmail.com>]  Second attempt, with updated genmachine syntax & semantics
+
+[2011-12-22 | ab28dd3 | <joseph.wecker@gmail.com>]  Clean up older comments
+
+[2011-12-15 | 2a32fae | <joseph.wecker@gmail.com>]  removed outdated def. of labels
+
+[2011-12-15 | ecfaa4a | <joseph.wecker@gmail.com>]  Lots of notes, solidified syntax (esp. scalars)
+
+[2011-12-14 | 4edf78e | <joseph.wecker@gmail.com>]  Got stuck w/ attributes and realized I had to revisit where I had left off before. So much for simplification! But on the plus, after all these weeks, I seem to have more clarity into what's decided and what's still unknown..
+
+[2011-12-13 | e74b03e | <joseph.wecker@gmail.com>]  quick note on hsearch
+
+[2011-12-13 | 0f32018 | <joseph.wecker@gmail.com>]  Fixed more names, cleaned up all those extra node types, finished namespace prefixing...
+
+[2011-12-13 | f3d359e | <jwecker@justin.tv>]  Started to fix namespace and node heirarchy.
+
+[2011-12-13 | 591de43 | <jwecker@justin.tv>]  Working through more of the node... need to simplify/consolidate attribute values...
+
+[2011-12-13 | 9291547 | <jwecker@justin.tv>]  unified a bit of the control syntax
+
+[2011-12-13 | 2c02bec | <jwecker@justin.tv>]  node identity part done, more syntax changes, polished children/sibling mechanics.
+
+[2011-12-13 | ba1d801 | <joseph.wecker@gmail.com>]  Getting machine to work well in this linked-list type manner
+
+[2011-12-12 | e9a835f | <jwecker@justin.tv>]  fleshing out the statemachine a bit
+
+[2011-12-12 | 7e7937a | <jwecker@justin.tv>]  define __set_errno if necessary
+
 [2011-12-12 | 12bf1a5 | <joseph.wecker@gmail.com>]  config check for malloc
 
 [2011-12-12 | 91d6354 | <joseph.wecker@gmail.com>]  update
