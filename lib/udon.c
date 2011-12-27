@@ -3,7 +3,6 @@
 
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <setjmp.h>
 #include "udon.h"
 
 
@@ -76,10 +75,9 @@ int udon_free_parser(UdonParser *p) {
  *  eof            ... explicitly handled
  *  unexpected eof ... grammar error
  */
-static jmp_buf setjmp_buf;
 
 int udon_parse(UdonParser *p) {
-    int retval = setjmp(setjmp_buf);
+    int retval = setjmp(p->err_jmpbuf);
     if(retval) return retval;
 
     p->result = gm__root(p);
@@ -89,7 +87,7 @@ int udon_parse(UdonParser *p) {
 
 static void *gm__root(UdonParser *p) {
     void *s = NULL;
-    s = gm__node(p, 1);
+    s = gm__node(p, 0);
     return s;
 }
 
@@ -130,7 +128,6 @@ s_initialize:
             s = udon_new_full_node(p);
             goto s_child__node;
         case '{':   // embed
-            //udon_error_p(p, UDON_SYSTEM_ERROR, __FILE__, __LINE__, "Embedded nodes not yet supported."); longjmp(setjmp_buf, (int)UDON_SYSTEM_ERROR);
             UDON_ERR("Embedded nodes not yet supported.");
         default:
             s = udon_new_full_node(p);
@@ -151,9 +148,7 @@ s_identity__id:
         case '.':   // class
 s_identity__class:
             ADVANCE_COLUMN();
-            // TODO: fix so that it allocates an
-            //       UdonList instead of string.
-            ((UdonFullNode *)s)->classes = udon_do_list_append( (UdonList *)(((UdonFullNode *)s)->classes), (UdonList *)gm__label(p));
+            udon_list_append_gen(p, &(UDON_SFN->classes), &(UDON_SFN->first_class), gm__label(p));
             goto s_identity;
         default:   // child
             goto s_child;
@@ -171,6 +166,7 @@ s_child__node:
 }
 
 static inline void *udon_new_value_node(UdonParser *p) {
+    // TODO: set source_line, source_col, node_type
     void *res;
     fprintf(stderr, "udon_new_value_node()");
     if( (res = (UdonFullNode *)udon_malloc(sizeof(UdonFullNode))) == NULL)
@@ -179,9 +175,9 @@ static inline void *udon_new_value_node(UdonParser *p) {
 }
 
 static inline void *udon_new_full_node(UdonParser *p) {
+    // TODO: set source_line, source_col, node_type
     void *res;
     fprintf(stderr, "udon_new_full_node()");
-    UDON_SYSERR("Sorry, don't like you.");
     if( (res = (UdonFullNode *)udon_malloc(sizeof(UdonFullNode))) == NULL)
         UDON_SYSERR("Couldn't allocate memory for a full Udon node.");
     return res;

@@ -10,11 +10,26 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <setjmp.h>
 
 // (for c++ inclusion)
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// --- Allow setting different malloc/free routines ---
+#ifdef _UDON_NONSTANDARD_MEMORY
+    void *udon_calloc(size_t count, size_t size);
+    void *udon_malloc(size_t size);
+    void  udon_free(void *ptr, size_t size);
+#else
+
+#define udon_calloc(count,size) calloc(count,size)
+#define udon_malloc(size)       malloc(size)
+#define udon_free(ptr,size)     free(ptr)
+#endif
+
+
 
 // --- Errors ---
     enum UdonError {
@@ -88,9 +103,12 @@ extern "C" {
     struct UdonFullNode {
         struct UdonNode  _base;         // Extend basic node
         UdonNode         *children;     // (same spot as UdonComment) - children linked-list
+        UdonNode         *first_child;  // Points to head of children list
+
         char             *name;         // This is the "tag"
         char             *id;           // If specified, the ID string
         UdonList         *classes;      // Linked list of classes
+        UdonList         *first_class;  // Points to head of class list
         UdonAttributes   attributes;    // See structure above
     };
     typedef struct UdonFullNode UdonFullNode;
@@ -110,7 +128,8 @@ extern "C" {
         // --- Set these ---
         char             *buffer;
         ssize_t          size;
-        char             *filename; // optional, of course
+        char             *filename;  // optional, of course
+        jmp_buf          err_jmpbuf; // Use setjmp(...)
 
         // --- Result State ---
         void             *result;
@@ -151,13 +170,25 @@ extern "C" {
         p->state = UDON_ABORTED_ERROR;
     }
 
-#define UDON_SYSERR(msg, ...) { udon_error_p(p, UDON_SYSTEM_ERROR, __FILE__, __LINE__, msg, ##__VA_ARGS__); longjmp(setjmp_buf, (int)UDON_SYSTEM_ERROR); }
+#define UDON_SYSERR(msg, ...) { udon_error_p(p, UDON_SYSTEM_ERROR, __FILE__, __LINE__, msg, ##__VA_ARGS__); longjmp(p->err_jmpbuf, (int)UDON_SYSTEM_ERROR); }
 
-#define UDON_ERR(msg, ...) udon_error_p(p, UDON_GRAMMAR_ERROR, __FILE__, __LINE__, msg, ##__VA_ARGS__); longjmp(setjmp_buf, (int)UDON_GRAMMAR_ERROR);
+#define UDON_ERR(msg, ...) { udon_error_p(p, UDON_GRAMMAR_ERROR, __FILE__, __LINE__, msg, ##__VA_ARGS__); longjmp(p->err_jmpbuf, (int)UDON_GRAMMAR_ERROR); }
 
-    static inline UdonList *udon_do_list_append(UdonList *list, UdonList *new_value) {
-        if(list) list->next = new_value;
-        return new_value;
+#define UDON_SFN ((UdonFullNode *)s)
+
+    static inline void udon_list_append_gen(UdonParser *p, UdonList **list, UdonList **first, void *val) {
+        UdonList *newtail = (UdonList *)udon_malloc(sizeof(UdonList));
+        if(newtail == NULL)
+            UDON_SYSERR("Couldn't allocate memory for a simple list.");
+        newtail->v = val;
+        if((* list) == NULL) {
+            printf("here...\n");
+            (* list) = newtail;
+            (* first) = newtail;
+        } else {
+            (* list)->next = newtail;
+            (* list) = newtail;
+        }
     }
 
     // --- MAIN API INTERFACE ---
@@ -170,19 +201,6 @@ extern "C" {
     // any results or anything at the moment...
     int udon_reset_parser(UdonParser *parser);
     int udon_free_parser(UdonParser *parser);
-
-// --- Allow setting different malloc/free routines ---
-#ifdef _UDON_NONSTANDARD_MEMORY
-    void *udon_calloc(size_t count, size_t size);
-    void *udon_malloc(size_t size);
-    void  udon_free(void *ptr, size_t size);
-#else
-
-#define udon_calloc(count,size) calloc(count,size)
-#define udon_malloc(size)       malloc(size)
-#define udon_free(ptr,size)     free(ptr)
-#endif
-
 
     // --- Opaque ---
     static        void *gm__root     (UdonParser *p);
