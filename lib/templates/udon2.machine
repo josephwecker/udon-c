@@ -54,7 +54,7 @@ New:
 # _ipar_ is more important- it is used on subsequent lines when text
 #   starts to say that our node is done. Kind of "parent's indent level."
 +-----------------------------------------------------+-----------------------------------------------+-----------------------+
-| node()[⌀]                                           | inline=F | ibase = col | ipar = col-1         | :initialize           |
+| node()[⌀]                                           | inline=T | ibase = col | ipar = col-1         | :initialize           |
 +-----------------------------------------------------+-----------------------------------------------+-----------------------+
 # initialize figuring out what kind of node it is, grabbing the name if
 # appropriate, and continuing with identity parts if it is a full node.

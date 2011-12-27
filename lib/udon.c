@@ -7,6 +7,8 @@
 
 
 char tmp_test[] = "some string or other...";
+
+char blank_string[] = "";
 char udon_global_error_msg[128];
 UdonError udon_global_error = UDON_NO_ERROR;
 
@@ -94,7 +96,7 @@ static void *gm__root(UdonParser *p) {
 static inline void *gm__node(UdonParser *p, int skip_to_child_shortcut) {
     void *s = NULL;
     if(skip_to_child_shortcut) goto s_child_shortcut;
-    int _local_inline = 0;
+    int _local_inline = 1;
     uint64_t _local_ibase  = p->column;
     uint64_t _local_ipar   = p->column - 1;
 
@@ -158,10 +160,50 @@ s_child_shortcut:
     s = udon_new_full_node(p);
     goto s_child;
 
+
+s_child:
+    switch(*(p->curr)) {
+        case ' ':  // leading
+        case '\t': // leading
+            ADVANCE_COLUMN();
+            goto s_child;
+        case '\n': // newline
+            ADVANCE_LINE();
+            if(!_local_inline) {
+                udon_list_append_gen(p, &(UDON_SFN->children), &(UDON_SFN->first_child), &blank_string);
+            }
+            _local_inline = 0;
+            goto s_child;
+        case '#': // comment
+            udon_scanto1(p, '\n');
+            // TODO: comment_node (?)
+            goto s_child;
+        default:
+            if(p->column <= _local_ipar) { // not-ours
+                return s;
+            } else {
+                switch(*(p->curr)) {
+                    case '|':  // node
+                        ADVANCE_COLUMN();
+                        UDON_APPEND_CHILD(gm__node(p,0));
+                        goto s_child;
+                    case ':': // attribute
+                        ADVANCE_COLUMN();
+                        goto s_attribute;
+                    default:
+                        if(_local_inline) {
+                            UDON_APPEND_CHILD(gm__value(p)); // TODO: define
+                        } else {
+                            UDON_APPEND_CHILD(gm__data(p));  // TODO: define
+                        }
+                        goto s_child;
+                }
+            }
+    }
+s_child__node:
+
 s_attribute:
 s_value:
-s_child:
-s_child__node:
     return s;
 }
 

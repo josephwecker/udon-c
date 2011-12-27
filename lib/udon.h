@@ -181,8 +181,11 @@ extern "C" {
         if(newtail == NULL)
             UDON_SYSERR("Couldn't allocate memory for a simple list.");
         newtail->v = val;
+        udon_list_append(p, list, first, newtail);
+    }
+
+    static inline void udon_list_append(UdonParser *p, UdonList **list, UdonList **first, UdonList *newtail) {
         if((* list) == NULL) {
-            printf("here...\n");
             (* list) = newtail;
             (* first) = newtail;
         } else {
@@ -190,6 +193,8 @@ extern "C" {
             (* list) = newtail;
         }
     }
+
+#define UDON_APPEND_CHILD(newnode) udon_list_append(p, &(UDON_SFN->children), &(UDON_SFN->first_child), (UdonList *)newnode)
 
     // --- MAIN API INTERFACE ---
     UdonParser *udon_new_parser_from_buffer(char *buffer, ssize_t length);
@@ -210,6 +215,42 @@ extern "C" {
 
     static inline void *udon_new_value_node(UdonParser *p);
     static inline void *udon_new_full_node (UdonParser *p);
+
+// Modified from http://graphics.stanford.edu/~seander/bithacks.html#ZeroInWord
+//             really just:  (v - 0x0101...) & ~v & 0x8080...
+#define q_haszero(v)    ((v) - UINT64_C(0x0101010101010101)) & ~(v) & UINT64_C(0x8080808080808080)
+#define q_hasval(v,n)   (q_haszero((v) ^ (~UINT64_C(0)/255 * (n))))
+
+// Search for one of two characters- first big chunks at a time and then get
+// the actual byte. (First statement resets qcurr to whatever curr is so curr
+// is authoritative).
+
+    static inline void udon_scanto1(UdonParser *p, c1) {
+        p->qcurr=(uint64_t *)(p->curr);
+        while((p->qcurr <= p->qeof) && !q_hasval(*(p->qcurr),(c1)))
+            p->qcurr++;
+        p->curr=(char *)(p->qcurr);
+        while((p->curr <= p->eof) && *(p->curr) != (c1))
+            p->curr++;
+    }
+
+    /*
+#define qscan2(c1,c2)   p->qcurr=(uint64_t *)(p->curr); \
+                        while((p->qcurr <= qeof) && !q_hasval(*qcurr,(c1)) && !q_hasval(*qcurr,(c2)))\
+                            qcurr++; \
+                        curr=(char *)qcurr;     \
+                        while((curr <= eof) && (*curr != (c1)) && (*curr != (c2)))\
+                            curr++;
+
+#define qscan3(c1,c2,c3) qcurr=(uint64_t *)curr; \
+                        while((qcurr <= qeof) && !q_hasval(*qcurr,(c1)) && \
+                                !q_hasval(*qcurr,(c2)) && !q_hasval(*qcurr,(c3)))\
+                            qcurr++; \
+                        curr=(char *)qcurr;     \
+                        while((curr <= eof) && (*curr != (c1)) && (*curr != (c2)) && (*curr != (c3)))\
+                            curr++;
+*/
+
 
 // (for c++ inclusion)
 #ifdef __cplusplus
