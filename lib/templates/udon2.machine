@@ -59,13 +59,13 @@ New:
 # initialize figuring out what kind of node it is, grabbing the name if
 # appropriate, and continuing with identity parts if it is a full node.
 +-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
-| :initialize       | [ ]/20[\n]/1[\t]/5 | /value     | ￫ | s = value_node()                          | <return s>            |
-| :initialize       | [\[]/10            | /id        | s = ^UdonFullNode                             | :identity /id         |
-| :initialize       | [|] /1             | /child     | s = ^UdonFullNode                             | :child /node          |
-| :initialize       | [.] /7             | /class     | s = ^UdonFullNode                             | :identity /class      |
-| :initialize       | [{] /1             | /embed     | e = "embedded nodes not supported yet"        | <err e>               |
-| :initialize       | [:] /20            | /attr      | ￫ | s = ^UdonFullNode                         | :attribute            |
+| :initialize       | [ ]/20[\n]/1[\t]/5 | /value     | ￫ | s = ^UdonValueNode                        | :value                |
+| :initialize       | [:] /20            | /attr      | ￫ | s = ^UdonFullNode                         | :attribute            | D
+| :initialize       | [\[]/10            | /id        | s = ^UdonFullNode                             | :identity /id         | D
+| :initialize       | [.] /7             | /class     | s = ^UdonFullNode                             | :identity /class      | D
 | :initialize       | [(] /5             | /protected | s = ^UdonFullNode | s.name=protected()        | :identity             |
+| :initialize       | [|] /1             | /child     | s = ^UdonFullNode                             | :child /node          |
+| :initialize       | [{] /1             | /embed     | e = "embedded nodes not supported yet"        | <err e>               |
 | :initialize       | ɛ   /30            | /name      | s = ^UdonFullNode | s.name=label()            | :identity             |
 +-------------------+--------------------+------------+-----------------------------------------------+-----------------------+
 # TODO: if desired, you could have a ":identity:after-id" where the id has
