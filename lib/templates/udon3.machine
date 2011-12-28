@@ -1,0 +1,84 @@
+
+
+|result /node:child-shortcut
+
+|function[node]           | inline=1 | ibase=COL | ipar=COL-1
+  |state[:init]
+    |switch CURR
+      |c[ \n\t] |.value   | ->| S=FullNode | S.node_type=VALUE |>> :value
+      |c[:]     |.attr    | ->| S=FullNode                     |>> :attribute
+      |c[<LBR>] |.id      | S=FullNode                         |>> :identity.id
+      |c[.]     |.class   | S=FullNode                         |>> :identity.class
+      |c[(]     |.delim   | S=FullNode | S.name=/label:delim   |>> :identity
+      |c[<PIPE>]|.child   | S=FullNode                         |>> :child.node
+      |c[{]     |.embed   |err Embedded nodes are not yet supported
+      |default  |.name    | S=FullNode | S.name=/label         |>> :identity
+  |state[:identity]
+    |switch CURR
+      |c[ \t]   |.lead    | ->                                 |>>
+      |c[<LBR>] |.id      | S.id=/id                           |>>
+      |c[.]     |.class   | ->| S.classes<</label              |>>
+      |default  |.child   |                                    |>> :child
+  |state[:child-shortcut] | S=FullNode | S.node_type=ROOT      |>> :child
+  |state[:child]
+    |switch CURR
+      |c[ \t]   |.lead    | ->                                 |>>
+      |c[\n]    |.nl      |if[!inline] | C<<Node |endif | inline=0 |>>
+      |c[#]     |.comment |
+
+
+|function[label]          | lvl=0
+  |state[:init]           | MARK(α)
+    |switch CURR
+      |c[(]     |.delim   |                                    |>> :delim.nest
+      |c[ \t\n<LBR><PIPE>.!] |.done| END(α)                    |return α
+      |default  |.collect | ->                                 |>>
+  |state[:delim]
+    |switch CURR
+      |c[(]     |.nest    | -> | lvl+=1                        |>>
+      |c[)]     |.unnest  | -> | lvl-=1
+        |if[lvl==0]                                            |return α
+        |else                                                  |>>
+        |endif
+      |default  |.collect | ->                                 |>>
+  |state[eof]             | END(α)                             |return α
+
+
+
+# C shorthands TODO:
+  * Prefix main types
+  * Use _base for inheritance
+  * LIST   -> GenMachineLL
+  * Z+     -> uint64_t
+  * STRING -> char * (maybe in the future w_char?) _and_ separate length
+  * For anything that is LIST or that has an append operator on it, another
+    field to hold the head (or tail, whichever way it's implemented).
+  * For structs, create the prefix_new_... functions
+
+|enum[NodeType]
+  |ROOT
+  |BLANK
+  |VALUE
+  |FULL
+
+|struct[Node < LIST]
+  |node_type     NodeType
+  |source_line   Z+
+  |source_column Z+
+
+|struct[Attributes]
+  |keys          LIST
+  |hash_table    struct hsearch_data *
+  |size          Z+
+  |num_allocated Z+
+
+|struct[FullNode < Node]
+  |children      Node *
+  |name          STRING
+  |id            STRING
+  |classes       LIST
+  |attributes    Attributes
+
+
+
+

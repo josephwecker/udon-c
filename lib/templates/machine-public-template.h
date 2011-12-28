@@ -1,11 +1,10 @@
-#ifndef __{{prefix|upcase}}_PARSER_H__
-#define __{{prefix|upcase}}_PARSER_H__
+#ifndef __{{prefix|upcase}}_H__
+#define __{{prefix|upcase}}_H__
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define _REENTRANT
-#define _XOPEN_SOURCE 700
+#include <setjmp.h>
 
 /*------------------ Memory management ----------------------------------------
  * Define _{{prefix|upcase}}_NONSTANDARD_MEMORY to use different malloc/free
@@ -28,11 +27,11 @@ extern "C" {
  */
 typedef struct _{{prefix | capitalize}}ParseState {
     /* Set these */
-    char                      *filename;
-    int                       fd;
-
+    char                      *buffer;
     ssize_t                   size;
-    ssize_t                   qsize;
+    char                      *filename;  // optional
+    jmp_buf                   err_jmpbuf; // set with setjmp(...)
+
 
     char                      *p_start;
     uint64_t                  *p_quick;
@@ -42,6 +41,8 @@ typedef struct _{{prefix | capitalize}}ParseState {
     uint64_t                  *p_qend;
 
     void                      *root;
+
+    ssize_t                   qsize;
 } {{prefix | capitalize}}ParseState;
 
 

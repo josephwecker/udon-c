@@ -1,3 +1,17 @@
+[2011-12-27 | b19d03e | <joseph.wecker@gmail.com>]  Rough first draft of the children part of the state machine implementation.
+
+[2011-12-27 | b27df6b | <joseph.wecker@gmail.com>]  Propagate filled structs instead of error codes and use longjmp for errors. Linked list appending fixed.
+
+[2011-12-26 | ca7cfea | <joseph.wecker@gmail.com>]  Basic node structs re-added and parser being built based on state machine as a by-hand experiment. Seems to compile and more or less work at the high level.
+
+[2011-12-26 | 2067da7 | <joseph.wecker@gmail.com>]  Remove older benchmarking loop and do correct error handling with real parse interface.
+
+[2011-12-26 | 6e29128 | <joseph.wecker@gmail.com>]  Starting to put small samples here for parsing.
+
+[2011-12-26 | a9c5b91 | <joseph.wecker@gmail.com>]  Some annotation (marked things as done) and changing value into a node-state instead of a different functional group altogether.
+
+[2011-12-23 | bf22959 | <joseph.wecker@gmail.com>]  Basic loading from file (again) but with better error handling more appropriate for a library.
+
 [2011-12-23 | a5c29ee | <joseph.wecker@gmail.com>]  Clearing out. Start again.
 
 [2011-12-23 | d293b1f | <joseph.wecker@gmail.com>]  Bump minor version and some quick updates.
