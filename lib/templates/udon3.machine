@@ -1,11 +1,12 @@
 
-
+|parser udon
 |result /node:child-shortcut
 
 |function[node]           | inline=1 | ibase=COL | ipar=COL-1
   |state[:init]
     |switch CURR
-      |c[ \n\t] |.value   | ->| S=FullNode | S.node_type=VALUE |>> :value
+      |c[\n]    |.value1  | ->| S=FullNode | S.node_type=VALUE |>> :value
+      |c[ \t]   |.value2  | ->| S=FullNode | S.node_type=VALUE |>> :value
       |c[:]     |.attr    | ->| S=FullNode                     |>> :attribute
       |c[<LBR>] |.id      | S=FullNode                         |>> :identity.id
       |c[.]     |.class   | S=FullNode                         |>> :identity.class
