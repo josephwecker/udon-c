@@ -109,6 +109,8 @@ def cmdval(str)
     return [:const, str]
   elsif str =~ /^[0-9.]+$/
     return [:number, str]
+  elsif str.start_with?('p->line') or str.start_with?('p->column')
+    return [:number, str]
   end
   return [:general, str]
 end
@@ -170,24 +172,142 @@ end
 
 def parse_source(&src)
   $name = ''
+  $functions = {}
+  toplevel = yield
   loop do
-    toplevel = yield
     if toplevel[:type] == :name
       $name = toplevel[:v]
+      toplevel = yield
     elsif toplevel[:type] == :result_initializer
-      initializer(toplevel[:v])
-    else
+      initializer_function(toplevel[:v])
+      toplevel = yield
+    elsif toplevel[:type] == :function
+      toplevel = build_function(toplevel[:v], &src)
+    elsif toplevel[:type] == :enum
       puts "#{toplevel[:type].to_s.ljust(20,' ')} | #{toplevel[:v]}"
+      toplevel = yield
+    elsif toplevel[:type] == :struct || toplevel[:type] == :label
+      puts "#{toplevel[:type].to_s.ljust(20,' ')} | #{toplevel[:v]}"
+      toplevel = yield
+    else
+      raise "expected a function, got a #{toplevel[:type]}"
     end
   end
 end
 
-def initializer(init_to)
+def initializer_function(init_to)
   emit_function("#{$name.downcase}_parse", "int",
                 ["    int errval = setjmp(p->err_jmpbuf);",
                  "    if(errval) return errval;",'',
                  "    p->result = #{init_to};",
                  "    return 0;"])
+end
+
+class GMFunction
+  attr_accessor :name, :type, :body, :localvars
+  def initialize(name, type)
+    @name = name
+    @type = type
+    @body = []
+    @localvars = []
+  end
+
+  def append_command(cmd)
+    raise "Don't recognize #{cmd}" unless (cmd.is_a?(Array) and cmd.size == 3)
+    operator, left, right = cmd
+    if operator == '='
+      if left[0] == :general && right[0] == :number
+        @body << "    uint64_t  #{left[1].ljust(10,' ')} = #{right[1]};"
+      else
+        raise "Don't know how to do '#{cmd}' at function top level"
+      end
+    else
+      raise "Don't know how to do '#{cmd}' at function top level"
+    end
+  end
+
+  def emit(start_state=nil)
+    # TODO: use start_state for duplicate "inner" entries
+    puts "#{@type} #{@name}(#{$name.capitalize}ParseState *p) {"
+    @localvars.each do |lv|
+      puts "    #{lv[1].ljust(10,' ')} #{lv[0]};"
+    end
+    @body.each do |b|
+      if b.is_a? String
+        puts b + "\n"
+      else
+        b.emit
+      end
+    end
+    puts "}"
+  end
+end
+
+class GMState
+  attr_accessor :name, :body
+  def initialize(name)
+    @name = name
+    @body = []
+  end
+
+  def emit
+    puts "#{@name.gsub(/^:/,'s_').gsub(/[^a-zA-Z0-9_]/,'__')}:"
+    @body.each do |b|
+      if b.is_a? String
+        puts "    " + b
+      else
+        b.emit
+      end
+    end
+  end
+end
+
+
+def build_function(name, &src)
+  #puts "FUNCTION #{name}"
+  #puts "--------------------"
+  f = GMFunction.new(name, "void *")
+  part = yield
+  loop do
+    if [:enum, :struct, :function].include?(part[:type])
+      f.emit
+      return part
+    elsif part[:type] == :cmd
+      f.append_command(part[:v])
+      part = yield
+    elsif part[:type] == :state
+      part = build_state(f, part[:v], &src)
+    else
+      puts "UNHANDLED #{part[:type].to_s.ljust(20,' ')} | #{part[:v]}"
+      part = yield
+    end
+  end
+end
+
+def build_state(f, name, &src)
+  st = GMState.new(name)
+  f.body << st
+  part = yield
+  loop do
+    if [:enum, :struct, :function, :state].include?(part[:type])
+      return part
+    elsif part[:type] == :switch
+      part = build_switch(f, st, part[:v], &src)
+      part = yield # TODO: remove
+    elsif part[:type] == :cmd
+      # TODO: YOU ARE HERE: build the correct command (possibly do switch
+      # creation first)
+      st.body << part[:v].to_s + ";"
+      part = yield
+    else
+      puts "#{part[:type].to_s.ljust(20,' ')} | #{part[:v]}"
+      part = yield
+    end
+  end
+end
+
+def build_switch(f, st, switchcmd, &src)
+
 end
 
 =begin
