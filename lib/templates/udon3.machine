@@ -2,47 +2,42 @@
 |parser udon
 |entry-point /node:child-shortcut
 
-|function[node]           | inline=1 | ibase=COL | ipar=COL-1
+|function[node:FullNode]  | inline=1 | ibase=COL | ipar=COL-1
   |state[:init]
-    |switch CURR
-      |c[\n]    |.value1  | ->| S=FullNode | S.node_type=VALUE |>> :value
-      |c[ \t]   |.value2  | ->| S=FullNode | S.node_type=VALUE |>> :value
-      |c[:]     |.attr    | ->| S=FullNode                     |>> :attribute
-      |c[<LBR>] |.id      | S=FullNode                         |>> :identity.id
-      |c[.]     |.class   | S=FullNode                         |>> :identity.class
-      |c[(]     |.delim   | S=FullNode | S.name=/label:delim   |>> :identity
-      |c[<PIPE>]|.child   | S=FullNode                         |>> :child.node
-      |c[{]     |.embed   |err Embedded nodes are not yet supported
-      |default  |.name    | S=FullNode | S.name=/label         |>> :identity
+    |c[\n]    |.value1    | -> | S.node_type=VALUE                 |>> :value
+    |c[ \t]   |.value2    | -> | S.node_type=VALUE                 |>> :value
+    |c[:]     |.attr      | ->                                     |>> :attribute
+    |c[<LBR>] |.id        |                                        |>> :identity.id
+    |c[.]     |.class     |                                        |>> :identity.class
+    |c[(]     |.delim     | S.name=/label:delim                    |>> :identity
+    |c[<PIPE>]|.child     |                                        |>> :child.node
+    |c[{]     |.embed     |err Embedded nodes are not yet supported
+    |default  |.name      | S.name=/label                          |>> :identity
   |state[:identity]
-    |switch CURR
-      |c[ \t]   |.lead    | ->                                 |>>
-      |c[<LBR>] |.id      | S.id=/id                           |>>
-      |c[.]     |.class   | ->| S.classes<</label              |>>
-      |default  |.child   |                                    |>> :child
-  |state[:child-shortcut] | S=FullNode | S.node_type=ROOT      |>> :child
+    |c[ \t]   |.lead      | ->                                     |>>
+    |c[<LBR>] |.id        | S.id=/id                               |>>
+    |c[.]     |.class     | ->| S.classes<</label                  |>>
+    |default  |.child     |                                        |>> :child
+  |state[:child-shortcut] | S.node_type=ROOT                       |>> :child
   |state[:child]
-    |switch CURR
-      |c[ \t]   |.lead    | ->                                 |>>
-      |c[\n]    |.nl      |if[!inline] | C<<Node |endif | inline=0 |>>
-      |c[#]     |.comment |
+    |c[ \t]   |.lead      | ->                                     |>>
+    |c[\n]    |.nl        |if[!inline] | C<<Node |endif | inline=0 |>>
+    |c[#]     |.comment   |
 
 
-|function[label]          | lvl=0
+|function[label:STRING]   | lvl=0
   |state[:init]           | MARK(α)
-    |switch CURR
-      |c[(]     |.delim   |                                    |>> :delim.nest
-      |c[ \t\n<LBR><PIPE>.!] |.done| END(α)                    |return α
-      |default  |.collect | ->                                 |>>
+    |c[(]     |.delim     |                                        |>> :delim.nest
+    |c[ \t\n<LBR><PIPE>.!]|.done| END(α)                          |return α
+    |default  |.collect   | ->                                     |>>
   |state[:delim]
-    |switch CURR
-      |c[(]     |.nest    | -> | lvl+=1                        |>>
-      |c[)]     |.unnest  | -> | lvl-=1
-        |if[lvl==0]                                            |return α
-        |else                                                  |>>
-        |endif
-      |default  |.collect | ->                                 |>>
-  |state[eof]             | END(α)                             |return α
+    |c[(]     |.nest      | -> | lvl+=1                            |>>
+    |c[)]     |.unnest    | -> | lvl-=1
+      |if[lvl==0]                                                  |return α
+      |else                                                        |>>
+      |endif
+    |default  |.collect   | ->                                     |>>
+  |state[eof]             | END(α)                                |return α
 
 
 
