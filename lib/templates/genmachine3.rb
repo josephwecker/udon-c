@@ -2,13 +2,13 @@
 # encoding: UTF-8
 
 class GM
-  attr_accessor :name, :body, :epoints, :locals
+  attr_accessor :name, :body, :epoints, :allocators
   def initialize
     @name = ''
     @body = []
     @epoints = []
     @checked_newline = false
-    @locals = []
+    @allocators = []
   end
 
   def checked_newline?() return @checked_newline end
@@ -29,21 +29,19 @@ class GM
         @body << f
         c = yield
       elsif c[0] == 'function'
-        f = GMFunction.new(self, "#{c[1]}", "static inline void *")
+        fname, ftype = c[1].split(':')
+        f = GMFunction.new(self, function_name(fname), ftype, true)
         @body << f
         c = f.parse(&src)
       else
-        require 'pp'
-        print "unprocessed: "
-        pp c
-        c = yield
+        require 'pp'; print "unprocessed (toplevel): "; pp c; c = yield
       end
     end
   end
 
   def parse_location(loc)
     loc = loc[1..-1].split(':')
-    res = {:function => 'gm__' + loc[0]}
+    res = {:function => function_name(loc[0])}
     loc = loc[1..-1]
     if loc.nil? or loc.join(':').strip == ''
       res[:state] = nil
@@ -56,23 +54,67 @@ class GM
     if res[:state]
       @epoints << res
     end
-    return res.values.join('__') + '(p)'
+    return res.values.compact.join('__') + '(p)'
   end
 
-  def emit; @body.each{|b| b.emit} end
+  def allocator(for_type)
+    # TODO: YOU ARE HERE:
+    #   return the function name (with parens) that allocates the type
+    #   register the allocator in a list of allocators that get emitted later.
+    #   Go back and work on "register_return_type"
+  end
+
+  def type_name(n)      @name.capitalize         + n end
+  def const_name(n)     @name.upcase+'_'         + n end
+  def function_name(n)  '_' + @name.downcase     + n end
+  def allocator_name(n) '_new_' + @name.downcase + n end
+
+  def emit; @body.each{|b| b.emit; puts "\n\n"} end
 end
 
-class GMCommand
-  attr_accessor :parent, :raw_cmd, :operator
+class GMGenericChild
+  attr_accessor :parent, :name, :body, :locals, :allocators
+  def initialize(parent, name)
+    @parent = parent
+    @name = name
+    @body = []
+    if @parent.methods.include? :locals
+      @locals = @parent.locals
+    else
+      @locals = []
+    end
+
+    @allocators = @parent.allocators
+  end
+
+  def checked_newline?() return @checked_newline end
+  def checked_newline=(v) @checked_newline = v; @parent.checked_newline = v end
+
+  def gm
+    p = @parent
+    while !p.is_a?(GM); p = p.parent end
+    return p
+  end
+
+  def parse(&src)
+    raise "OVERRIDE ME"
+  end
+
+  def emit(indent=0)
+    raise "OVERRIDE ME"
+  end
+end
+
+class GMCommand < GMGenericChild
+  attr_accessor :parent
   def initialize(parent, cmd)
     cmd       = cmd.strip
-    @parent   = parent
-    @raw_cmd  = cmd
+    super(parent, cmd)
     @cmd      = nil
     @operator = nil
     @lside    = nil
     @rside    = nil
-    if cmd.start_with? '/'; @cmd = gm_parent.parse_location(cmd)
+    if cmd.start_with? '/'; @cmd = gm.parse_location(cmd)
     elsif cmd == '->';      @operator = :advance
     elsif cmd =~ /((!|=|<|(?<!-)>|\+|-(?!>))+)/
       @operator = $1
@@ -100,27 +142,22 @@ class GMCommand
         puts "uint64_t  #{outv(@lside).ljust(20-10,' ')} = #{outv(@rside)};"
       else
         puts "#{outv(@lside).ljust(20,' ')} = #{outv(@rside)};"
-      #else
-      #  puts "DOH"
       end
     elsif @operator
-      puts "#{outv(@lside).ljust(20,' ')} #{operator} #{outv(@rside)}"
+      puts "#{outv(@lside).ljust(20,' ')} #{@operator} #{outv(@rside)}"
     else
-      #raise "Can't handle this command: '#{@raw_cmd}'"
-      print @raw_cmd
-      if @raw_cmd.strip[-1..-1] == ';' then puts "" else puts ";" end
+      raise "Can't handle this command: '#{@name}'"
     end
   end
 
   def outv(statement)
-    # TODO: way to add localvars to parent.
     stype, sval = statement
     if [:general, :number, :location].include?(stype)
       return sval
     elsif stype == :const
-      return gm_parent.name.upcase + '_' + sval
+      return gm.const_name(sval)
     elsif stype == :type
-      return gm_parent.name.capitalize + sval
+      return gm.type_name(sval)
     elsif stype == :acc
       if sval[0] == 'mark'
         return "#{sval[1]}_start = p->curr"
@@ -141,7 +178,7 @@ class GMCommand
       gsub(/(?=^|[^a-zA-Z0-9])α(?=$|[^a-zA-Z0-9])/u,   'greek_alpha').
       gsub(/(?=^|[^a-zA-Z0-9])β(?=$|[^a-zA-Z0-9])/u,   'greek_beta')
 
-    if cmd.start_with?('/')                ; return [:location, gm_parent.parse_location(cmd)]
+    if cmd.start_with?('/')                ; return [:location, gm.parse_location(cmd)]
     elsif cmd =~ /(?<=^|[^a-zA-Z0-9])(MARK|END)\s*\(([^\)]*)\)(?=$|[^a-zA-Z0-9])/u
       return [:acc, [$1.downcase, $2]]
     elsif cmd =~ /^[A-Z]+[a-z]+[a-zA-Z]*$/ ; return [:type, cmd]
@@ -152,30 +189,33 @@ class GMCommand
     end
     return [:general, cmd]
   end
-
-  def gm_parent
-    p = @parent
-    while !p.is_a?(GM); p = p.parent end
-    return p
-  end
 end
 
-class GMFunction
-  attr_accessor :parent, :name, :ftype, :body, :locals
-  def initialize(parent, name, ftype)
-    @parent = parent
-    @name = name
-    @ftype = ftype
-    @body = []
-    @locals = []
+# TODO: YOU ARE HERE:
+#   - propagate local variables now that we can easily
+#   - have functions emit the local variables
+#   - do the switch statements next (below) - actually, get rid of them.
+
+class GMFunction < GMGenericChild
+  attr_accessor :ftype
+  def initialize(parent, name, return_type, inner=false)
+    # Locals: type, name, declaration position, optional initialization value
+    super(parent, name)
+    @local_definitions = []
+    if inner
+      #@locals << ['void *', 'self_res'] # TODO: unless "skip" set somehow
+      @ftype = register_return_type(return_type)
+    else
+      @ftype = return_type
+    end
   end
 
-  def append_cmd(cmd)
-
+  def register_return_type(rt)
+    if rt == 'STRING'
+      @locals << 'self_res'
+      @local_definitions << ['GMString *', 'self_res', gm.allocator('GMString')]
+      @body << GMCommand.new
   end
-
-  def checked_newline?() return @checked_newline end
-  def checked_newline=(v) @checked_newline = v; @parent.checked_newline = v end
 
   def parse(&src)
     c = yield
@@ -185,11 +225,12 @@ class GMFunction
       elsif c[0] == ''
         @body << GMCommand.new(self, c[2])
         c = yield
+      elsif c[0] == 'state'
+        st = GMState.new(self, 's_' + c[1].gsub(/-|:/,'_'))
+        @body << st
+        c = st.parse(&src)
       else
-        require 'pp'
-        print "unprocessed: "
-        pp c
-        c = yield
+        require 'pp'; print "unprocessed (function): "; pp c; c = yield
       end
     end
   end
@@ -202,6 +243,29 @@ class GMFunction
   end
 end
 
+
+class GMState < GMGenericChild
+  # TODO: way better EOF processing
+  def parse(&src)
+    c = yield
+    loop do
+      if ['enum','struct','function','state'].include?(c[0])
+        return c
+      #elsif c[0] == 'switch'
+      elsif c[0] == ''
+        @body << GMCommand.new(self, c[2])
+        c = yield
+      else
+        require 'pp'; print "unprocessed (state): "; pp c; c = yield
+      end
+    end
+  end
+
+  def emit(indent)
+    puts ('    '*indent)+@name+':'
+    @body.each{|b| b.emit(indent+1)}
+  end
+end
 
 
 
