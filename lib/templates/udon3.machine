@@ -1,6 +1,6 @@
 
 |parser udon
-|result /node:child-shortcut
+|entry-point /node:child-shortcut
 
 |function[node]           | inline=1 | ibase=COL | ipar=COL-1
   |state[:init]

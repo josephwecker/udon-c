@@ -1,4 +1,6 @@
-#!/usr/bin/env ruby -Ku
+#!/usr/bin/env ruby
+# encoding: UTF-8
+
 # Skipping the genmachine rubygem temporarily to try and get this working
 # simply w/ C / experimenting.
 
@@ -113,15 +115,6 @@ def cmdval(str)
     return [:number, str]
   end
   return [:general, str]
-end
-
-def finished_cmd(cmd)
-  if cmd.is_a? Array
-# TODO: YOU ARE HERE
-# cmd[0] ￫ operator, cmd[1] ￫ left side, cmd[2] ￫ right side
-  elsif cmd == :advance
-  else
-  end
 end
 
 def location(loc)
