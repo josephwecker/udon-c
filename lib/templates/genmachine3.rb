@@ -24,7 +24,7 @@ class GM
         f = GMFunction.new(self, "#{@name}_parse", 'int')
         f.body << GMCommand.new(f, "int errval = setjmp(p->err_jmpbuf)")
         f.body << GMCommand.new(f, "if(errval) return errval")
-        f.body << GMCommand.new(f, "p->result = #{parse_location(c[2])}")
+        f.body << GMCommand.new(f, "p->result = #{parse_location(c[2])[1]}")
         f.body << GMCommand.new(f, "return 0")
         @body << f
         c = yield
@@ -40,6 +40,23 @@ class GM
   end
 
   def parse_location(loc)
+    loc = loc.split(/(?=\/|:|\.)/)
+    loc = loc.reduce({}) do |res, part|
+      if part[0..0] == '/' then res[:function] = function_name(part[1..-1])
+      elsif part[0..0] == ':' then res[:state] = 's_' + part[1..-1].gsub(/-/,'_')
+      elsif part[0..0] == '.' then res[:substate] = part[1..-1]
+      else res[:state] = part.gsub(/-/,'_') end
+      res
+    end
+    @epoints << loc if loc[:function] && loc[:state]  # will mean create extra functions
+    res = [loc[:function], loc[:state], loc[:substate]].compact
+    res = res.join('__')
+    res += '(p)' if loc[:function]
+    return [loc, res]
+  end
+
+=begin
+  def parse_location(loc)
     loc = loc[1..-1].split(':')
     res = {:function => function_name(loc[0])}
     loc = loc[1..-1]
@@ -48,7 +65,7 @@ class GM
       res[:substate] = nil
     else
       loc = loc.join(':').split('.')
-      res[:state] = 's_' + loc[0].gsub(/-|:/,'_')
+      res[:state] = 's_' + loc[0].gsub(/-/,'_').gsub(':','')
       res[:substate] = loc[1].gsub(/-|:/,'_') unless loc[1].nil?
     end
     if res[:state]
@@ -56,6 +73,7 @@ class GM
     end
     return res.values.compact.join('__') + '(p)'
   end
+=end
 
   def allocator(for_type)
     fname = '_new_' + @name.downcase + '_' + for_type.downcase
@@ -77,8 +95,6 @@ class GMGenericChild
     @name = name
     @body = []
   end
-  def checked_newline?() return @checked_newline end
-  def checked_newline=(v) @checked_newline = v; @parent.checked_newline = v end
   def gm
     p = @parent
     while !p.is_a?(GM); p = p.parent end
@@ -87,6 +103,11 @@ class GMGenericChild
   def gmf
     p = @parent
     while !p.is_a?(GMFunction); p = p.parent end
+    return p
+  end
+  def gms
+    p = @parent
+    while !p.is_a?(GMState); p = p.parent end
     return p
   end
   def parse(&src) raise "OVERRIDE ME" end
@@ -103,7 +124,7 @@ class GMCommand < GMGenericChild
     @operator = nil
     @lside    = nil
     @rside    = nil
-    if cmd.start_with? '/'; @cmd = gm.parse_location(cmd)
+    if cmd.start_with? '/'; @cmd = gm.parse_location(cmd)[1]
     elsif cmd == '->';      @operator = :advance
     elsif cmd =~ /((!|=|<|(?<!-)>|\+|-(?!>))+)/
       @operator = $1
@@ -144,9 +165,9 @@ class GMCommand < GMGenericChild
     if @cmd
       puts outv(@cmd) + ";"
     elsif @operator == :advance
-      if @parent.checked_newline?
+      if gm.checked_newline?
         puts "p->column = 1; p->line ++; p->curr ++;"
-        @parent.checked_newline = false;
+        gm.checked_newline = false;
       else
         puts "p->column ++; p->curr ++;"
       end
@@ -177,7 +198,7 @@ class GMCommand < GMGenericChild
     cmd = specials_map(cmd)
     if cmd =~ /(?<=^|[^a-zA-Z0-9_])(MARK|MARK_END)\s*(?:\(([^\)]*)\))?(?=$|[^a-zA-Z0-9_])/u
                                              return [:acc,      [$1.downcase, $2 || 'self_res']]
-    elsif cmd.start_with?('/')             ; return [:location, gm.parse_location(cmd)]
+    elsif cmd.start_with?('/')             ; return [:location, gm.parse_location(cmd)[1]]
     elsif cmd =~ /^[A-Z]+[a-z]+[a-zA-Z]*$/ ; return [:type,     cmd]
     elsif cmd =~ /^[A-Z]+$/                ; return [:const,    cmd]
     elsif cmd =~ /^[0-9.]+$/               ; return [:number,   cmd]
@@ -198,10 +219,12 @@ class GMCommand < GMGenericChild
 end
 
 class GMFunction < GMGenericChild
-  attr_accessor :ftype
+  attr_accessor :ftype, :expected, :implemented
   def initialize(parent, name, return_type, inner=false)
     # Locals: type, name, declaration position, optional initialization value
     super(parent, name)
+    @expected = {}  # states and substates that will be jumped to
+    @implemented = {}
     @locals = {}
     if inner
       @ftype = register_return_type(return_type)
@@ -232,8 +255,10 @@ class GMFunction < GMGenericChild
         @body << GMCommand.new(self, c[2])
         c = yield
       elsif c[0] == 'state'
-        st = GMState.new(self, 's_' + c[1].gsub(/-|:/,'_'))
+        statename = 's_' + c[1].gsub(/-/,'_').gsub(':','')
+        st = GMState.new(self, statename)
         @body << st
+        @implemented[statename] = true
         c = st.parse(&src)
       else
         require 'pp'; print "unprocessed (function): "; pp c; c = yield
@@ -250,6 +275,15 @@ class GMFunction < GMGenericChild
       else puts "    #{decl};" end
     end
     @body.each{|b| b.emit(1)}
+    @expected.each do |e,parts|
+      unless @implemented[e]
+        msg = "Parser for '#{parts[:state].gsub(/^s_/,'')}' "
+        msg += "(substate '#{parts[:substate]}') " if parts[:substate]
+        msg += "not yet implemented."
+        puts "    #{e}:"
+        puts "        _#{gm.name.upcase}_ERR(\"#{msg}\");"
+      end
+    end
     puts "}"
   end
 end
@@ -262,11 +296,17 @@ class GMState < GMGenericChild
     loop do
       if ['enum','struct','function','state'].include?(c[0])
         return c
-      elsif c[0] == 'c'
-        
       elsif c[0] == ''
         @body << GMCommand.new(self, c[2])
         c = yield
+      elsif c[0] == 'c'
+        cstmt = GMCase.new(self, c[1])
+        @body << cstmt
+        c = cstmt.parse(&src)
+      elsif c[0] == 'default'
+        dstmt = GMCase.new(self, nil)
+        @body << dstmt
+        c = dstmt.parse(&src)
       else
         require 'pp'; print "unprocessed (state): "; pp c; c = yield
       end
@@ -275,18 +315,81 @@ class GMState < GMGenericChild
 
   def emit(indent)
     puts ('    '*indent)+@name+':'
-    @body.each{|b| b.emit(indent+1)}
+    indent += 1
+    in_switch = false
+    @body.each do |b|
+      if b.is_a?(GMCase) && !in_switch
+        in_switch = true
+        puts ('    '*indent)+'switch(*(p->curr)) {'
+        indent += 1
+      end
+
+      b.emit(indent)
+    end
+    puts(('    '*(indent-1)) + '}') if in_switch
   end
 end
 
 
 class GMCase < GMGenericChild
-  def parse(&src)
+  def initialize(par, nm)
+    super(par, nm)
+    if @name.nil?
+      @default = true
+      gm.checked_newline = false
+    else
+      @default = false
+      @name = @name.gsub('<LBR>','[').gsub('<PIPE>','|').gsub('\\t',"\t").gsub('\\n',"\n")
+      @chars = @name.split(//).map{|c| c.gsub("\n",'\\n').gsub("\t",'\\t').gsub("'","\\'").gsub("\\","\\\\")}
+      gm.checked_newline = @chars.include?("\\n")
+    end
+  end
 
+  def parse(&src)
+    c = yield
+    loop do
+      if ['enum','struct','function','state','c','default'].include?(c[0])
+        return c
+      elsif c[0] == '.'
+        @substate = c[2]
+        gmf.implemented[gms.name + '__' + @substate] = true
+        c = yield
+      elsif c[0] == ''
+        @body << GMCommand.new(self, c[2])
+        c = yield
+      elsif c[0] == '>>'
+        if c[2] == ''
+          @body << GMCommand.new(self, "goto #{gms.name}")
+        else
+          loc, lstr = gm.parse_location(c[2])
+          gmf.expected[lstr] = loc
+          @body << GMCommand.new(self, "goto #{lstr}")
+        end
+        c = yield
+      else
+        require 'pp'; print "unprocessed (case): "; pp c; c = yield
+      end
+    end
   end
 
   def emit(indent)
-
+    cstmts = []
+    if @default
+      cstmts = ["default:"]
+      gm.checked_newline = false
+    else
+      cstmts = @chars.map{|c| "case '#{c}':"}
+      gm.checked_newline = @chars.include?("\\n")
+    end
+    if @substate
+      cstmts[-1] = cstmts[-1].ljust(20,' ') + "/* #{gms.name.gsub(/^s_/,'')}.#{@substate} */"
+      substate_label = @parent.name + '__' + @substate
+      if gmf.expected[substate_label]
+        cstmts << '  ' + substate_label + ':'
+      end
+    end
+    puts cstmts.map{|c| '    '*indent + c}.join("\n")
+    @body.each{|b| b.emit(indent+1)}
   end
 end
 
