@@ -36,7 +36,8 @@
       |if[lvl==0]                                                  |return S
       |else                                                        |>>
       |endif
-    |default  |.collect   | ->                                     |>>
+    |c[\n]    |.collect1  | ->                                     |>>
+    |default  |.collect2  | ->                                     |>>
   |state[eof]             | MARK_END                               |return S
 
 
