@@ -197,11 +197,6 @@ class GMCommand < GMGenericChild
   end
 end
 
-# TODO: YOU ARE HERE:
-#   - propagate local variables now that we can easily
-#   - have functions emit the local variables
-#   - do the switch statements next (below) - actually, get rid of them.
-
 class GMFunction < GMGenericChild
   attr_accessor :ftype
   def initialize(parent, name, return_type, inner=false)
@@ -251,11 +246,8 @@ class GMFunction < GMGenericChild
     @locals.each do |n, t_i|
       ltype, linit = t_i
       decl = ltype.nil? ? n : ltype + ' ' + n
-      if linit
-        puts "    #{decl.ljust(24,' ')} = #{linit};"
-      else
-        puts "    #{decl};"
-      end
+      if linit then puts "    #{decl.ljust(24,' ')} = #{linit};"
+      else puts "    #{decl};" end
     end
     @body.each{|b| b.emit(1)}
     puts "}"
@@ -270,7 +262,8 @@ class GMState < GMGenericChild
     loop do
       if ['enum','struct','function','state'].include?(c[0])
         return c
-      #elsif c[0] == 'switch'
+      elsif c[0] == 'c'
+        
       elsif c[0] == ''
         @body << GMCommand.new(self, c[2])
         c = yield
@@ -286,6 +279,16 @@ class GMState < GMGenericChild
   end
 end
 
+
+class GMCase < GMGenericChild
+  def parse(&src)
+
+  end
+
+  def emit(indent)
+
+  end
+end
 
 
 
