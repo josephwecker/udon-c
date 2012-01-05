@@ -25,19 +25,19 @@
     |c[#]     |.comment   |
 
 
-|function[label:STRING]   | lvl=0
-  |state[:init]           | MARK(α)
+|function[label:STRING]   |
+  |state[:init]           | MARK
     |c[(]     |.delim     |                                        |>> :delim.nest
-    |c[ \t\n<LBR><PIPE>.!]|.done| END(α)                          |return α
+    |c[ \t\n<LBR><PIPE>.!]|.done| MARK_END                         |return S
     |default  |.collect   | ->                                     |>>
   |state[:delim]
     |c[(]     |.nest      | -> | lvl+=1                            |>>
     |c[)]     |.unnest    | -> | lvl-=1
-      |if[lvl==0]                                                  |return α
+      |if[lvl==0]                                                  |return S
       |else                                                        |>>
       |endif
     |default  |.collect   | ->                                     |>>
-  |state[eof]             | END(α)                                |return α
+  |state[eof]             | MARK_END                               |return S
 
 
 
