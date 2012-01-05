@@ -22,10 +22,10 @@ class GM
         c = yield
       elsif c[0] == 'entry-point'
         f = GMFunction.new(self, "#{@name}_parse", 'int')
-        f.body << GMCommand.new(self, "int errval = setjmp(p->err_jmpbuf)")
-        f.body << GMCommand.new(self, "if(errval) return errval")
-        f.body << GMCommand.new(self, "p->result = #{parse_location(c[2])}")
-        f.body << GMCommand.new(self, "return 0")
+        f.body << GMCommand.new(f, "int errval = setjmp(p->err_jmpbuf)")
+        f.body << GMCommand.new(f, "if(errval) return errval")
+        f.body << GMCommand.new(f, "p->result = #{parse_location(c[2])}")
+        f.body << GMCommand.new(f, "return 0")
         @body << f
         c = yield
       elsif c[0] == 'function'
@@ -110,60 +110,73 @@ class GMCommand < GMGenericChild
       lside, rside = cmd.split(@operator)
       @lside = parse_side(lside)
       @rside = parse_side(rside)
-      if @operator == '='
+      if @operator.include? '='
         # Assignment: might need to make sure local variable exists etc.
-        if @rside[0] == :number
-          ltype = 'uint64_t'
-        elsif @rside[0] == :type
-        if @parent.is_a?(GMFunction)
-          if
-          @parent.register_local(
+        if @lside[1] !~ /\.|->/
+          if @rside[0] == :number
+            ltype = 'uint64_t'
+          elsif @rside[0] == :type
+            ltype = gm.type_name(@rside[1]) + ' *'
+            @rside[1] = gm.allocator(@rside[1])
+          end
+
+          if @parent.is_a?(GMFunction)
+            @parent.register_local(ltype, @lside[1], outv(@rside))
+            @ignore = true
+          else
+            gmf.register_local(ltype, @lside[1])
+            @ignore = false
+          end
+        end
       end
     else
       @cmd = parse_side(cmd)
+      if @cmd[0] == :acc
+        gmf.register_local('GMString *', @cmd[1][1], gm.allocator('GMString'))
+      end
     end
   end
     
   def emit(indent)
-    #print '    '*indent
-    #if @cmd
-    #  puts outv(@cmd) + ";"
-    #elsif @operator == :advance
-    #  if @parent.checked_newline?
-    #    puts "p->column = 1; p->line ++; p->curr ++;"
-    #    @parent.checked_newline = false;
-    #  else
-    #    puts "p->column ++; p->curr ++;"
-    #  end
-    #elsif @operator == '='
-      #if (@rside[0] == :number && !@parent.loc[outv(@lside)])
-      #  puts "uint64_t  #{outv(@lside).ljust(20-10,' ')} = #{outv(@rside)};"
-      #else
-   #     puts "#{outv(@lside).ljust(20,' ')} = #{outv(@rside)};"
-      #end
-   # elsif @operator
-   #   puts "#{outv(@lside).ljust(20,' ')} #{@operator} #{outv(@rside)}"
-   # else
-   #   raise "Can't handle this command: '#{@name}'"
-   # end
+    return if @ignore
+
+    print '    '*indent
+    if @cmd
+      puts outv(@cmd) + ";"
+    elsif @operator == :advance
+      if @parent.checked_newline?
+        puts "p->column = 1; p->line ++; p->curr ++;"
+        @parent.checked_newline = false;
+      else
+        puts "p->column ++; p->curr ++;"
+      end
+    elsif @operator
+      if @operator.length == 1
+        puts "#{outv(@lside).ljust(28-(4*indent),' ')} #{@operator} #{outv(@rside)}"
+      else
+        puts "#{outv(@lside).ljust(27-(4*indent),' ')} #{@operator} #{outv(@rside)}"
+      end
+    else
+      raise "Can't handle this command: '#{@name}'"
+    end
   end
 
-  #def outv(statement)
-  #  stype, sval = statement
-  #  if [:general, :number, :location].include?(stype); return sval
-  #  elsif stype == :const; return gm.const_name(sval)
-  #  elsif stype == :type;  return gm.type_name(sval)
-  #  elsif stype == :acc
-  #    if sval[0] == 'mark'; return "#{sval[1]}_start = p->curr"
-  #    else return "#{(sval[1]+'_length').ljust(20,' ')} = p->curr - #{sval[1]}_start" end
-  #  end
-  #end
+  def outv(statement)
+    stype, sval = statement
+    if [:general, :number, :location].include?(stype); return sval
+    elsif stype == :const; return gm.const_name(sval)
+    elsif stype == :type;  return gm.type_name(sval)
+    elsif stype == :acc
+      if sval[0] == 'mark'; return "#{(sval[1]+'->start').ljust(20,' ')} = p->curr"
+      else return "#{(sval[1]+'->length').ljust(20,' ')} = p->curr - #{sval[1]}->start" end
+    end
+  end
 
   def parse_side(cmd)
     return nil if cmd.nil?
     cmd = specials_map(cmd)
-    if cmd =~ /(?<=^|[^a-zA-Z0-9])(MARK|END)\s*\(([^\)]*)\)(?=$|[^a-zA-Z0-9])/u
-                                             return [:acc,      [$1.downcase, $2]]
+    if cmd =~ /(?<=^|[^a-zA-Z0-9_])(MARK|MARK_END)\s*(?:\(([^\)]*)\))?(?=$|[^a-zA-Z0-9_])/u
+                                             return [:acc,      [$1.downcase, $2 || 'self_res']]
     elsif cmd.start_with?('/')             ; return [:location, gm.parse_location(cmd)]
     elsif cmd =~ /^[A-Z]+[a-z]+[a-zA-Z]*$/ ; return [:type,     cmd]
     elsif cmd =~ /^[A-Z]+$/                ; return [:const,    cmd]
@@ -179,7 +192,7 @@ class GMCommand < GMGenericChild
            ['β',  'greek_beta']]
     map.reduce(cmd.strip) do |val, mapping|
       from, to = mapping
-      val.gsub(/(?=^|[^a-zA-Z0-9])#{from}(?=$|[^a-zA-Z0-9])/u, to)
+      val.gsub(/(?=^|[^a-zA-Z0-9_])#{from}(?=$|[^a-zA-Z0-9_])/u, to)
     end
   end
 end
@@ -206,17 +219,14 @@ class GMFunction < GMGenericChild
     return if rt.nil?
     if rt == 'STRING'; base_type = 'GMString'
     elsif rt =~ /^[A-Z]+[a-z]+[a-zA-Z]*$/ ; base_type = gm.type_name(rt) end
-    register_local(base_type +' *', 'self_res', gm.allocator(base_type), false)
+    register_local(base_type +' *', 'self_res', gm.allocator(base_type))
     return "static inline #{base_type} *"
   end
 
-  def register_local(ltype, lname, linitval=nil, prefix_it=true)
-    lname = localname(lname) if prefix_it
+  def register_local(ltype, lname, linitval=nil)
     return if @locals[lname]
     @locals[lname] = [ltype, linitval]
   end
-
-  def localname(n) '_l_'+n end
 
   def parse(&src)
     c = yield
@@ -238,7 +248,15 @@ class GMFunction < GMGenericChild
 
   def emit
     puts "#{@ftype} #{@name}(#{@parent.name.capitalize}ParseState *p) {"
-    # TODO: emit locals
+    @locals.each do |n, t_i|
+      ltype, linit = t_i
+      decl = ltype.nil? ? n : ltype + ' ' + n
+      if linit
+        puts "    #{decl.ljust(24,' ')} = #{linit};"
+      else
+        puts "    #{decl};"
+      end
+    end
     @body.each{|b| b.emit(1)}
     puts "}"
   end
