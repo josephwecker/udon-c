@@ -486,6 +486,12 @@ class GMConditional < GMGenericChild
   end
 end
 
+# Filters for liquid
+module GMFilterShorthand
+  def up(input) input.upcase end
+  def cap(input) input.capitalize end
+end
+
 
 #------- Main loop (just feeding stuff to parser) --------
 # Pull in source and feed it, one part at a time, to wherever parse_source asks
@@ -504,4 +510,25 @@ gm.parse do |parser|
   rest = c.gsub(/^(\.|[^ \[]+)/,'').gsub(/\[[^\]]*\]/,'').strip
   [(tag || '').strip.downcase, id || '', rest || '']
 end
-gm.emit
+
+
+#-------- Creating output files --------
+require 'liquid'
+
+$d = File.dirname(File.realpath(__FILE__)) + '/'
+
+templates = ['parser.c', 'parser_private.h', 'parser.h']
+templates.map!{|t| [t, Liquid::Template.parse(IO.read($d+t))]}
+
+context = {
+  'gm' => gm,
+  'parser' => gm.name
+}
+
+
+templates.each do |filename, t|
+  result = t.render(context, :filters => GMFilterShorthand)
+  filename = filename.gsub('parser',gm.name)
+  open(filename,'w'){|f| f.write(result)}
+end
+#gm.emit

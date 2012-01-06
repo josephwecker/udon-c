@@ -30,6 +30,16 @@ extern int {{parser}}_global_error;
 extern char {{parser}}_global_error_msg[128];
 
 
+/* TODO:
+ *  - Linked Lists if needed
+ *  - Hash tables if needed
+ *  - Strings if needed (can't imagine them not being needed)
+ *  - Types / enums as per the source
+ *  - Public prototypes
+ *
+ */
+
+
 #ifdef __cplusplus
 }
 #endif

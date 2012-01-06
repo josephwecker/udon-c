@@ -10,7 +10,19 @@
 
 #include "{{parser}}.h"
 
+/* TODO:
+ *  - Error handling
+ *  - Parser state defines
+ *  - Parser structure
+ *  - Quickscan macros
+ *  - Private prototypes: parsing functions
+ *  - Private prototypes: allocation functions
+ *  - Possibly also emit another file for dictionaries
+ *
+ */
+
 /* --- Error handling --- */
+
 
 
 #ifdef __cplusplus

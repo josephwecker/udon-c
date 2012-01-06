@@ -1,5 +1,28 @@
-
 |parser udon
+
+|enum[NodeType]
+  |ROOT |BLANK |VALUE |FULL
+
+|struct[Node < LIST]
+  |node_type     NodeType
+  |source_line   Z+
+  |source_column Z+
+
+#|struct[Attributes]
+#  |keys          LIST
+#  |hash_table    struct hsearch_data *
+#  |size          Z+
+#  |num_allocated Z+
+
+|struct[FullNode < Node]
+  |children      Node *
+  |name          STRING
+  |id            STRING
+  |classes       LIST
+  |attributes    DICT
+
+
+
 |entry-point /node:child-shortcut
 
 |function[node:FullNode]  | inline=1 | ibase=COL | ipar=COL-1
@@ -52,29 +75,6 @@
     field to hold the head (or tail, whichever way it's implemented).
   * For structs, create the prefix_new_... functions
 
-|enum[NodeType]
-  |ROOT
-  |BLANK
-  |VALUE
-  |FULL
-
-|struct[Node < LIST]
-  |node_type     NodeType
-  |source_line   Z+
-  |source_column Z+
-
-|struct[Attributes]
-  |keys          LIST
-  |hash_table    struct hsearch_data *
-  |size          Z+
-  |num_allocated Z+
-
-|struct[FullNode < Node]
-  |children      Node *
-  |name          STRING
-  |id            STRING
-  |classes       LIST
-  |attributes    Attributes
 
 
 
