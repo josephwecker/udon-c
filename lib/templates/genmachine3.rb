@@ -1,6 +1,14 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
 
+# TODO:
+#   * Generic and specific EOF handling
+#   * Some missing semicolons
+#   * Check for not-yet-implemented function locations and create stubs
+#   * Generate "shortcircuited" parse-group functions
+#   * Generate to 3 files (source c, public h, private h)
+#   * Structure/enum code generation
+#   * Generate initialization functions
 class GM
   attr_accessor :name, :body, :epoints, :allocators
   def initialize
@@ -324,7 +332,6 @@ end
 
 
 class GMState < GMGenericChild
-  # TODO: way better EOF processing
   def parse(&src)
     c = yield
     loop do
