@@ -25,7 +25,7 @@
     |c[#]     |.comment   |
 
 
-|function[label:STRING]   |
+|function[label:STRING]   | lvl=0
   |state[:init]           | MARK
     |c[(]     |.delim     |                                        |>> :delim.nest
     |c[ \t\n<LBR><PIPE>.!]|.done| MARK_END                         |return S
