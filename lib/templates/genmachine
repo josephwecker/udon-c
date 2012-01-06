@@ -16,6 +16,11 @@
 #   (Extra credit)
 #   * Sprinkle generated code with comments that are the original source
 #
+
+INDENTS = 4
+COL_2 = 32
+
+
 class GM
   attr_accessor :name, :body, :epoints, :allocators
   def initialize
@@ -151,12 +156,12 @@ class GMGenericChild
     return p
   end
   def parse(&src) raise "OVERRIDE ME" end
-  def dent(i) '    '*i end
+  def dent(i) ' '*i*INDENTS end
   def to_str(ind=0) return "#{dent(ind)}<unimplemented #{self.class.to_s}>\n" end
 end
 
 class GMCommand < GMGenericChild
-  attr_accessor :ignore
+  attr_accessor :ignore, :statement
   def initialize(parent, cmd, statement=false, register=true)
     cmd       = cmd.strip
     super(parent, cmd)
@@ -199,6 +204,15 @@ class GMCommand < GMGenericChild
       @cmd = parse_side(cmd)
       if @cmd[0] == :acc
         gmf.register_local('GMString *', @cmd[1][1], gm.allocator('GMString'))
+        @operator = '='
+        if @cmd[1][0] == 'mark'
+          @lside = @cmd[1][1]+'->start'
+          @rside = 'p->curr'
+        else
+          @lside = @cmd[1][1]+'->length'
+          @rside = 'p->curr - '+@cmd[1][1]+'->start'
+        end
+        @cmd = nil
       end
     end
   end
@@ -217,7 +231,7 @@ class GMCommand < GMGenericChild
           return dent(ind)+'_'+gm.name.upcase+"_ADVANCE_LINE();\n"
         else return(dent(ind)+'_'+gm.name.upcase+"_ADVANCE_COL();\n") end
       elsif @operator
-        subind = (@operator.length == 1 ? 28 : 27) - (ind*4)
+        subind = (@operator.length == 1 ? COL_2 : COL_2-1) - (ind*INDENTS)
         return dent(ind)+outv(@lside).ljust(subind,' ')+" #{@operator} #{outv(@rside)};\n"
       else
         raise "Can't handle this command: '#{@name}'"
@@ -230,10 +244,7 @@ class GMCommand < GMGenericChild
     if [:general, :number, :location].include?(stype); return sval
     elsif stype == :const; return gm.const_name(sval)
     elsif stype == :type;  return gm.type_name(sval)
-    elsif stype == :acc
-      if sval[0] == 'mark'; return "#{(sval[1]+'->start').ljust(20,' ')} = p->curr"
-      else return "#{(sval[1]+'->length').ljust(20,' ')} = p->curr - #{sval[1]}->start" end
-    end
+    else return statement end
   end
 
   def parse_side(cmd)
@@ -412,6 +423,10 @@ class GMCase < GMGenericChild
 
   def to_str(ind=3)
     cstmts = []
+    label_intern = @parent.name + '__' + (@substate||'')
+    is_expected = gmf.expected[label_intern]
+    inline = (((@chars && @chars.size == 1) || @chars.nil?) &&
+              @body.size == 1 && @body[0].is_a?(GMCommand) && !is_expected)
     if @default
       cstmts = ["default:"]
       gm.checked_newline = false
@@ -420,14 +435,17 @@ class GMCase < GMGenericChild
       gm.checked_newline = @chars.include?("\\n")
     end
     if @substate
-      cstmts[-1] = cstmts[-1].ljust(20,' ') + "/* #{gms.name.gsub(/^s_/,'')}.#{@substate} */"
-      substate_label = @parent.name + '__' + @substate
-      if gmf.expected[substate_label]
-        cstmts << '  ' + substate_label + ':'
-      end
+      label = gms.name.gsub(/^s_/,'')+'.'+@substate +' '
+      if inline then cstmts[-1] = cstmts[-1].ljust(11,' ') + " /*-- #{label.ljust(15,'-')}*/   "
+      else           cstmts[-1] = cstmts[-1].ljust(11,' ') + " /*-- #{label.ljust(15,'-')}*/" end
+      cstmts << '  ' + label_intern + ':' if is_expected
     end
-    res = cstmts.map{|c| dent(ind) + c}.join("\n") + "\n"
-    res + @body.map{|b| b.to_str(ind+1)}.join('')
+    if inline
+      res = cstmts.map{|c| dent(ind) + c}.join('')
+    else
+      res = cstmts.map{|c| dent(ind) + c}.join("\n") + "\n"
+    end
+    res + @body.map{|b| b.to_str((inline ? 0 : ind+1))}.join('')
   end
 end
 
@@ -468,14 +486,24 @@ class GMConditional < GMGenericChild
   def to_str(ind=1)
     first_if = true
     res = ''
+    inline = @conds.all?{|c,b| b.size == 1}
+    sbrac = inline ? '' : "{\n"
+    ebrac = inline ? '' : "} "
     @conds.each do |clause, body|
-      if first_if  then res =  dent(ind)+"if(" + clause.to_str(0) + ") {\n"
-      elsif clause then res += dent(ind)+"} else if(" + clause.to_str(0) + ") {\n"
-      else              res += dent(ind)+"} else {\n" end
+      if first_if  then res =  dent(ind)+"if(" + clause.to_str(0) + ") #{sbrac}"
+      elsif clause then res += dent(ind)+"#{ebrac}else if(" + clause.to_str(0) + ") #{sbrac}"
+      else              res += dent(ind)+"#{ebrac}else #{sbrac}" end
       first_if = false
-      res += body.map{|b| b.to_str(ind+1)}.join('')
+      if inline
+        b = body[0]
+        b.statement = true
+        res += b.to_str(0) + ";\n"
+      else
+        res += body.map{|b| b.to_str(ind+1)}.join('')
+      end
     end
-    res + dent(ind)+"}\n"
+    res += dent(ind)+"}\n" unless inline
+    res
   end
 end
 
