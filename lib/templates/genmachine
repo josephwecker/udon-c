@@ -81,7 +81,6 @@ class GM
   def function_name(n)  '_' + @name.downcase+'_' + n end
 
   def to_str() @body.map{|b| b.to_str}.join("\n\n") end
-  #def emit; @body.each{|b| b.emit; puts "\n\n"} end
 end
 
 class GMGenericChild
@@ -152,15 +151,16 @@ class GMGenericChild
     return p
   end
   def parse(&src) raise "OVERRIDE ME" end
-  def to_str(indent=0) raise "OVERRIDE ME" end
-  #def emit(indent=0) raise "OVERRIDE ME" end
+  def dent(i) '    '*i end
+  def to_str(ind=0) return "#{dent(ind)}<unimplemented #{self.class.to_s}>\n" end
 end
 
 class GMCommand < GMGenericChild
   attr_accessor :ignore
-  def initialize(parent, cmd, statement=false)
+  def initialize(parent, cmd, statement=false, register=true)
     cmd       = cmd.strip
     super(parent, cmd)
+    @register = register
     @statement= statement
     @ignore   = false
     @cmd      = nil
@@ -184,12 +184,14 @@ class GMCommand < GMGenericChild
             @rside[1] = gm.allocator(@rside[1])
           end
 
-          if @parent.is_a?(GMFunction)
-            @parent.register_local(ltype, @lside[1], outv(@rside))
-            @ignore = true
-          else
-            gmf.register_local(ltype, @lside[1])
-            @ignore = false
+          if @register
+            if @parent.is_a?(GMFunction)
+              @parent.register_local(ltype, @lside[1], outv(@rside))
+              @ignore = true
+            else
+              gmf.register_local(ltype, @lside[1])
+              @ignore = false
+            end
           end
         end
       end
@@ -201,42 +203,22 @@ class GMCommand < GMGenericChild
     end
   end
 
-  def to_str(indent)
+  def to_str(ind=1)
     return '' if @ignore
     if @statement
       if @cmd then return outv(@cmd)
       elsif @operator == '=' then return '('+outv(@lside)+@operator+outv(@rside)+')'
       else return (outv(@lside) || '')+(@operator || '')+(outv(@rside) || '') end
     else
-      res=' '*(4*indent)
-  end
-
-  def emit(indent)
-    return if @ignore
-
-    if @statement
-      if @cmd
-        print outv(@cmd)
-      elsif @operator == '='
-        print "("+outv(@lside)+@operator+outv(@rside)+")"
-      else
-        print (outv(@lside) || '')+(@operator || '')+(outv(@rside) || '')
-      end
-    else
-      print '    '*indent
-      if @cmd
-        puts outv(@cmd) + ";"
+      if @cmd then return dent(ind)+outv(@cmd)+";\n"
       elsif @operator == :advance
         if gm.checked_newline?
-          puts "p->column = 1; p->line ++; p->curr ++;"
-          gm.checked_newline = false;
-        else puts "p->column ++; p->curr ++;" end
+          gm.checked_newline = false
+          return dent(ind)+'_'+gm.name.upcase+"_ADVANCE_LINE();\n"
+        else return(dent(ind)+'_'+gm.name.upcase+"_ADVANCE_COL();\n") end
       elsif @operator
-        if @operator.length == 1
-          puts "#{outv(@lside).ljust(28-(4*indent),' ')} #{@operator} #{outv(@rside)}"
-        else
-          puts "#{outv(@lside).ljust(27-(4*indent),' ')} #{@operator} #{outv(@rside)}"
-        end
+        subind = (@operator.length == 1 ? 28 : 27) - (ind*4)
+        return dent(ind)+outv(@lside).ljust(subind,' ')+" #{@operator} #{outv(@rside)};\n"
       else
         raise "Can't handle this command: '#{@name}'"
       end
@@ -327,25 +309,27 @@ class GMFunction < GMGenericChild
     end
   end
 
-  def emit
-    puts "#{@ftype} #{@name}(#{@parent.name.capitalize}ParseState *p) {"
-    @locals.each do |n, t_i|
-      ltype, linit = t_i
-      decl = ltype.nil? ? n : ltype + ' ' + n
-      if linit then puts "    #{decl.ljust(24,' ')} = #{linit};"
-      else puts "    #{decl};" end
+  def to_str(ind=0)
+    res = dent(ind)+"#{@ftype} #{@name}(#{gm.name.capitalize}ParseState *p) {\n"
+    ind = 1
+    @locals.each do |lname, ltype_init|
+      ltype, linit = ltype_init
+      decl = ltype.nil? ? lname : ltype + ' ' + lname
+      cmd = decl+(linit ? "= #{linit}" : '')
+      res += GMCommand.new(self, cmd, false, false).to_str(ind)
     end
-    @body.each{|b| b.emit(1)}
-    @expected.each do |e,parts|
+    res += @body.map{|b| b.to_str(ind)}.join('')
+    @expected.each do |e, parts|
       unless @implemented[e]
         msg = "Parser for '#{parts[:state].gsub(/^s_/,'')}' "
         msg += "(substate '#{parts[:substate]}') " if parts[:substate]
         msg += "not yet implemented."
-        puts "    #{e}:"
-        puts "        _#{gm.name.upcase}_ERR(\"#{msg}\");"
+        res += dent(ind)+e+":\n"
+        res += dent(ind)+'    _'+gm.name.upcase+'_ERR("'+msg+"\");\n"
       end
     end
-    puts "}"
+    res += dent(ind-1)+"}\n"
+    return res
   end
 end
 
@@ -374,20 +358,21 @@ class GMState < GMGenericChild
     end
   end
 
-  def emit(indent)
-    puts ('    '*indent)+@name+':'
-    indent += 1
+  def to_str(ind=1)
+    res = dent(ind)+@name+":\n"
+    ind += 1
     in_switch = false
-    @body.each do |b|
+    bod = @body.map do |b|
+      r = ''
       if b.is_a?(GMCase) && !in_switch
-        in_switch = true
-        puts ('    '*indent)+'switch(*(p->curr)) {'
-        indent += 1
+        r += dent(ind)+"switch(*(p->curr)) {\n"
+        in_switch = true; ind += 1
       end
-
-      b.emit(indent)
+      r + b.to_str(ind)
     end
-    puts(('    '*(indent-1)) + '}') if in_switch
+    res += bod.join('')
+    res += dent(ind-1) + "}\n"
+    return res
   end
 end
 
@@ -425,7 +410,7 @@ class GMCase < GMGenericChild
     end
   end
 
-  def emit(indent)
+  def to_str(ind=3)
     cstmts = []
     if @default
       cstmts = ["default:"]
@@ -441,8 +426,8 @@ class GMCase < GMGenericChild
         cstmts << '  ' + substate_label + ':'
       end
     end
-    puts cstmts.map{|c| '    '*indent + c}.join("\n")
-    @body.each{|b| b.emit(indent+1)}
+    res = cstmts.map{|c| dent(ind) + c}.join("\n") + "\n"
+    res + @body.map{|b| b.to_str(ind+1)}.join('')
   end
 end
 
@@ -480,21 +465,17 @@ class GMConditional < GMGenericChild
     end
   end
 
-  def emit(indent)
+  def to_str(ind=1)
     first_if = true
-    i = '    '*indent
+    res = ''
     @conds.each do |clause, body|
-      if first_if
-        print i+"if("; clause.emit(0); puts ") {"
-        first_if = false
-      elsif clause
-        print i+"} else if("; clause.emit(0); puts ") {"
-      else
-        puts i+"} else {"
-      end
-      body.each{|b| b.emit(indent+1)}
+      if first_if  then res =  dent(ind)+"if(" + clause.to_str(0) + ") {\n"
+      elsif clause then res += dent(ind)+"} else if(" + clause.to_str(0) + ") {\n"
+      else              res += dent(ind)+"} else {\n" end
+      first_if = false
+      res += body.map{|b| b.to_str(ind+1)}.join('')
     end
-    puts i+"}"
+    res + dent(ind)+"}\n"
   end
 end
 
@@ -543,4 +524,5 @@ templates.each do |filename, t|
   filename = filename.gsub('parser',gm.name)
   open(filename,'w'){|f| f.write(result)}
 end
-#gm.emit
+
+puts gm.to_str
