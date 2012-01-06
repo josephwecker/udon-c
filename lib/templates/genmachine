@@ -80,7 +80,8 @@ class GM
   def const_name(n)     @name.upcase+'_'         + n end
   def function_name(n)  '_' + @name.downcase+'_' + n end
 
-  def emit; @body.each{|b| b.emit; puts "\n\n"} end
+  def to_str() @body.map{|b| b.to_str}.join("\n\n") end
+  #def emit; @body.each{|b| b.emit; puts "\n\n"} end
 end
 
 class GMGenericChild
@@ -151,7 +152,8 @@ class GMGenericChild
     return p
   end
   def parse(&src) raise "OVERRIDE ME" end
-  def emit(indent=0) raise "OVERRIDE ME" end
+  def to_str(indent=0) raise "OVERRIDE ME" end
+  #def emit(indent=0) raise "OVERRIDE ME" end
 end
 
 class GMCommand < GMGenericChild
@@ -198,7 +200,17 @@ class GMCommand < GMGenericChild
       end
     end
   end
-    
+
+  def to_str(indent)
+    return '' if @ignore
+    if @statement
+      if @cmd then return outv(@cmd)
+      elsif @operator == '=' then return '('+outv(@lside)+@operator+outv(@rside)+')'
+      else return (outv(@lside) || '')+(@operator || '')+(outv(@rside) || '') end
+    else
+      res=' '*(4*indent)
+  end
+
   def emit(indent)
     return if @ignore
 
