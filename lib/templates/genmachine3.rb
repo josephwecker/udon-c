@@ -55,26 +55,6 @@ class GM
     return [loc, res]
   end
 
-=begin
-  def parse_location(loc)
-    loc = loc[1..-1].split(':')
-    res = {:function => function_name(loc[0])}
-    loc = loc[1..-1]
-    if loc.nil? or loc.join(':').strip == ''
-      res[:state] = nil
-      res[:substate] = nil
-    else
-      loc = loc.join(':').split('.')
-      res[:state] = 's_' + loc[0].gsub(/-/,'_').gsub(':','')
-      res[:substate] = loc[1].gsub(/-|:/,'_') unless loc[1].nil?
-    end
-    if res[:state]
-      @epoints << res
-    end
-    return res.values.compact.join('__') + '(p)'
-  end
-=end
-
   def allocator(for_type)
     fname = '_new_' + @name.downcase + '_' + for_type.downcase
     @allocators[for_type] = fname
@@ -95,17 +75,62 @@ class GMGenericChild
     @name = name
     @body = []
   end
+
+  def check_basic_commands(c, &src)
+    matched = false
+    is_done = false
+    new_c = c
+    if c[0] == ''
+      @body << GMCommand.new(self, c[2])
+      new_c = yield
+      matched = true
+      is_done = false
+    elsif c[0] == '>>'
+      if c[2] == ''
+        @body << GMCommand.new(self, "goto #{gms.name}")
+      else
+        loc, lstr = gm.parse_location(c[2])
+        gmf.expected[lstr] = loc
+        @body << GMCommand.new(self, "goto #{lstr}")
+      end
+      new_c = yield
+      matched = true
+      is_done = true
+    elsif c[0] == 'err'
+      @body << GMCommand.new(self, "_#{gm.name.upcase}_ERR(\"#{c[2].gsub('"','\\"')}\")")
+      new_c = yield
+      matched = true
+      is_done = true
+    elsif c[0] == 'return'
+      @body << GMCommand.new(self, "return #{c[2]}")
+      new_c = yield
+      matched = true
+      is_done = true
+    elsif c[0] == 'if'
+      cond = GMConditional.new(self, c[1])
+      @body << cond
+      new_c = cond.parse(&src)
+      matched = true
+      is_done = false
+    end
+
+    return [matched, new_c, is_done]
+  end
+
   def gm
+    return self if self.is_a?(GM)
     p = @parent
     while !p.is_a?(GM); p = p.parent end
     return p
   end
   def gmf
+    return self if self.is_a?(GMFunction)
     p = @parent
     while !p.is_a?(GMFunction); p = p.parent end
     return p
   end
   def gms
+    return self if self.is_a?(GMState)
     p = @parent
     while !p.is_a?(GMState); p = p.parent end
     return p
@@ -116,9 +141,10 @@ end
 
 class GMCommand < GMGenericChild
   attr_accessor :ignore
-  def initialize(parent, cmd)
+  def initialize(parent, cmd, statement=false)
     cmd       = cmd.strip
     super(parent, cmd)
+    @statement= statement
     @ignore   = false
     @cmd      = nil
     @operator = nil
@@ -161,24 +187,32 @@ class GMCommand < GMGenericChild
   def emit(indent)
     return if @ignore
 
-    print '    '*indent
-    if @cmd
-      puts outv(@cmd) + ";"
-    elsif @operator == :advance
-      if gm.checked_newline?
-        puts "p->column = 1; p->line ++; p->curr ++;"
-        gm.checked_newline = false;
+    if @statement
+      if @cmd
+        print outv(@cmd)
+      elsif @operator == '='
+        print "("+outv(@lside)+@operator+outv(@rside)+")"
       else
-        puts "p->column ++; p->curr ++;"
-      end
-    elsif @operator
-      if @operator.length == 1
-        puts "#{outv(@lside).ljust(28-(4*indent),' ')} #{@operator} #{outv(@rside)}"
-      else
-        puts "#{outv(@lside).ljust(27-(4*indent),' ')} #{@operator} #{outv(@rside)}"
+        print (outv(@lside) || '')+(@operator || '')+(outv(@rside) || '')
       end
     else
-      raise "Can't handle this command: '#{@name}'"
+      print '    '*indent
+      if @cmd
+        puts outv(@cmd) + ";"
+      elsif @operator == :advance
+        if gm.checked_newline?
+          puts "p->column = 1; p->line ++; p->curr ++;"
+          gm.checked_newline = false;
+        else puts "p->column ++; p->curr ++;" end
+      elsif @operator
+        if @operator.length == 1
+          puts "#{outv(@lside).ljust(28-(4*indent),' ')} #{@operator} #{outv(@rside)}"
+        else
+          puts "#{outv(@lside).ljust(27-(4*indent),' ')} #{@operator} #{outv(@rside)}"
+        end
+      else
+        raise "Can't handle this command: '#{@name}'"
+      end
     end
   end
 
@@ -213,7 +247,7 @@ class GMCommand < GMGenericChild
            ['β',  'greek_beta']]
     map.reduce(cmd.strip) do |val, mapping|
       from, to = mapping
-      val.gsub(/(?=^|[^a-zA-Z0-9_])#{from}(?=$|[^a-zA-Z0-9_])/u, to)
+      val.gsub(/(?<=^|[^a-zA-Z0-9_])#{from}(?=$|[^a-zA-Z0-9_])/u, to)
     end
   end
 end
@@ -296,9 +330,6 @@ class GMState < GMGenericChild
     loop do
       if ['enum','struct','function','state'].include?(c[0])
         return c
-      elsif c[0] == ''
-        @body << GMCommand.new(self, c[2])
-        c = yield
       elsif c[0] == 'c'
         cstmt = GMCase.new(self, c[1])
         @body << cstmt
@@ -308,7 +339,11 @@ class GMState < GMGenericChild
         @body << dstmt
         c = dstmt.parse(&src)
       else
-        require 'pp'; print "unprocessed (state): "; pp c; c = yield
+        res, c, is_done = check_basic_commands(c, &src)
+        return c if is_done && res
+        unless res
+          require 'pp'; print "unprocessed (state): "; pp c; c = yield
+        end
       end
     end
   end
@@ -354,20 +389,12 @@ class GMCase < GMGenericChild
         @substate = c[2]
         gmf.implemented[gms.name + '__' + @substate] = true
         c = yield
-      elsif c[0] == ''
-        @body << GMCommand.new(self, c[2])
-        c = yield
-      elsif c[0] == '>>'
-        if c[2] == ''
-          @body << GMCommand.new(self, "goto #{gms.name}")
-        else
-          loc, lstr = gm.parse_location(c[2])
-          gmf.expected[lstr] = loc
-          @body << GMCommand.new(self, "goto #{lstr}")
-        end
-        c = yield
       else
-        require 'pp'; print "unprocessed (case): "; pp c; c = yield
+        res, c, is_done = check_basic_commands(c, &src)
+        return c if is_done && res
+        unless res
+          require 'pp'; print "unprocessed (case): "; pp c; c = yield
+        end
       end
     end
   end
@@ -393,6 +420,57 @@ class GMCase < GMGenericChild
   end
 end
 
+
+class GMConditional < GMGenericChild
+  def initialize(p,n)
+    super(p,n)
+    @conds = []
+    @curr_clause = GMCommand.new(self, n, true)
+  end
+
+  def parse(&src)
+    c = yield
+    loop do
+      if c[0] == 'elsif'
+        @conds << [@curr_clause, @body.dup]
+        @body = []
+        @curr_clause = GMCommand.new(self, c[1], true)
+        c = yield
+      elsif c[0] == 'else'
+        @conds << [@curr_clause, @body.dup]
+        @body = []
+        @curr_clause = nil
+        c = yield
+      elsif c[0] == 'endif'
+        @conds << [@curr_clause, @body]
+        c = yield
+        return c
+      else
+        res, c, is_done = check_basic_commands(c, &src)
+        unless res
+          require 'pp'; print "unprocessed (if-statement): "; pp c; c = yield
+        end
+      end
+    end
+  end
+
+  def emit(indent)
+    first_if = true
+    i = '    '*indent
+    @conds.each do |clause, body|
+      if first_if
+        print i+"if("; clause.emit(0); puts ") {"
+        first_if = false
+      elsif clause
+        print i+"} else if("; clause.emit(0); puts ") {"
+      else
+        puts i+"} else {"
+      end
+      body.each{|b| b.emit(indent+1)}
+    end
+    puts i+"}"
+  end
+end
 
 
 #------- Main loop (just feeding stuff to parser) --------
