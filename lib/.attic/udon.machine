@@ -1,0 +1,130 @@
+TODO: order by frequency! (even estimate frequency)
+
+<struct> << <struct> => either set first_child of left or set the tail child and advance that to tail.
+@<struct>    => indicates a struct that acts across states in the same function / predefined/reserved vars
+$<struct>    => global
+->           => $p_curr += 1;
+<-           => $p_curr -= 1;
+setm         => $mark = $p_curr
+endm         => *$p_curr = 0; // null-terminate it
+@a           => $mark  // a for accumulator even though that's not really what we're doing...
+
+reserved:
+ * a
+ * s
+ * ch
+ * setm
+ * endm
+ * null
+
+TODO: (see N1) in this situation where we now know which character matches, possibly jump into the middle of the                next state- know which one to go to...
+ start cond         input     acc      code                                             transition
++-----------------------------------+--------------------------------------------------+-----------------------+
+| document()[ROOT]                  | $setm();                                         | :toplevel             |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| :toplevel       | [\n]            | $endm(); @ch << TEXT(@a); ->;                    | :toplevel             |
+| :toplevel       | [\t]            | ->;                                              | :toplevel             |
+| :toplevel       | [#]             | ->; @ch << mcomment(); $setm();                  | :toplevel             |
+| :toplevel       | [|]             | ->; @ch << node(); $setm();                      | :toplevel             |
+| :toplevel       | .               | ->;                                              | :toplevel:data        |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| :toplevel:data  | [\n]            | $endm(); @ch << TEXT(@a); ->;                    | :toplevel             |
+| :toplevel:data  | .               | ->;                                              | :toplevel:data        |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| {eof}           |                 | {@a.len}(@ch << TEXT(@a));                       | <return @s>           |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+
+
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| mcomment()[COMMENT]               | ibase=$col+1; ipar=$col;                         | :first:ws             |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| :first:ws       | [ \t]           | ->;  ibase += 1;                                 | :first:ws             |
+| :first:ws       | [\n]            | ->;                                              | :nextline             |
+| :first:ws       | .               | $setm(); ->;                                     | :data                 |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| :data           | [\n]            | $endm(); @ch << TEXT(@a); ->;                    | :nextline             |
+| :data           | .               | ->;                                              | :data                 |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| :nextline       | {$col > ibase}  | $setm(); ->;                                     | :data                 |
+| :nextline       | [ \t]           | ->;                                              | :nextline             |
+| :nextline       | [\n]            | @ch << TEXT(""); ->;                             | :nextline             |
+| :nextline       | {$col <= ipar}  |                                                  | <return @s>           |
+| :nextline       | .               | $setm(); ibase=$col; ->;                         | :data                 |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| {eof}           |                 | {@a.len}(@ch << TEXT(@a));                       | <return @s>           |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+
+
+
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| node()[FULL_NODE]                 | ibase=$col+1; ipar=$col;                         | :first:type           |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| :first:type     | ^[ \t\n\[.#:]   | @s.name = label_str();                           | :first:ident       | N1
+| :first:type     | .               |                                                  | :first:ident          |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| :first:ident    | [ \t]           | ->;                                              | :first:ident          |
+| :first:ident    | [\n]            | ->;                                              | :children             |
+| :first:ident    | [\[]            | ->; @s.id = nested_str('[',']');                 | :first:ident          |
+| :first:ident    | [.]             | ->; @s.append_class(label_str());                | :first:ident          |
+| :first:ident    | [:]             | ->; attributes(*@s.attributes);                  | :children             |
+## REMOVE ME ##| :first:ident    | [:]             | ->; attkey = label();                            | :first:attr:val       |
+| :first:ident    | [#]             | [\n]->;                                          | :children             |
+| :first:ident    | .               | $setm(); ->;                                     | :first:data           |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| :first:data     | {eof?}          | $endm(); @s.val = @a;                            | <return @s>           |
+| :first:data     | [\n]            | $endm(); @s.val = @a;                            | :children             |
+| :first:data     | [#]             | $endm(); @s.val = @a; [\n]->;                    | :children             |
+| :first:data     | .               | ->;                                              | :first:data           |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :first:attr:val | {eof?}          |         @s.add_attr(attkey, null);               | <return @s>           |
+#| :first:attr:val | [ \t]           | ->;                                              | :first:attr:val       |
+#| :first:attr:val | [\n]            | ->;     @s.add_attr(attkey, null);               | :children             |
+#| :first:attr:val | [#]             | [\n]->; @s.add_attr(attkey, null);               | :children             |
+#| :first:attr:val | .               |         @s.add_attr(attkey, label_str());        | :first:ident          |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :children       | {$col > ibase && @ch.type == TEXT} | $setm(); 
+| :children       | [ \t]           | ->;                                              | :children             |
+| :children       | [\n]            | ->; @ch << TEXT("");                             | :children             |
+| :children       | [#]             | [\n]->;                                          | :children             |
+| :children       | {$col <= ipar}  |                                                  | <return @s>           |
+#| :children       | [:]             | ->; attkey = label();                            | :children:attr:v      |
+| :children       | [|]             | ->; @ch << node();                               | :children             |
+| :children       | .               | ibase=$col;$setm();->[\n];$endm();@ch<<@a;->;    | :children:t           |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+# Just like :children, but when the last child was text- so if indented more it's just more text...            |
+| :children:t     | {$col > ibase}  | $setm(); ->[\n]; $endm(); @ch << @a; ->;         | :children:t           |
+| :children:t     | [ \t]           | ->;                                              | :children:t           |
+| :children:t     | [\n]            | ->; @ch << TEXT("");                             | :children:t           |
+| :children:t     | [#]             | [\n]->;                                          | :children             |
+| :children:t     | {$col <= ipar}  |                                                  | <return @s>           |
+#| :children:t     | [:]             | ->; attkey = label();                            | :children:attr:v      |
+| :children:t     | [|]             | ->; @ch << node();                               | :children             |
+| :children:t     | .               | $setm(); ->[\n];$endm();@ch<<@a;->;              | :children:t           |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :children:attr:v | [\n]           | ->; @s.add_attr(attkey, null);                   | :children             |
+#| :children:attr:v | [ \t]          | ->;                                              | :children:attr:v      |
+#| :children:attr:v | ["]            | @s.add_attr(attkey
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+| {eof}           |                 |                                                  | <return @s>           |
++-----------------+-----------------+--------------------------------------------------+-----------------------+
+
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#|attributes(att)[att]               | ipar=$col;                                       | :key                  |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :key            |                 | attr_key = label_str(); @s.keys << attr_key;     | :values:start         |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :values:start   | [ \t]           | ->;                                              | :values:start         |
+#| :values:start   | [\n]            | ->; @s.add_pair(attr_key, null);                 | <return>              |
+#| :values:start   | [:]             | ->; @s.add_pair(attr_key, null);                 | :key                  |
+#| :values:start   | [|]             | ->;                                              | :a_done:no_key        |
+#| :values:start   | [#]             | [\n]->; @s.add_pair(attr_key, null);             | <return>              |
+#| :values:start   | .               | $setm(); ->[ \t\n];                              | :values               |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :a_done:no_key  | [>]             | ->; @s.add_pair(attr_key, @a);                   | <return>              |
+#| :a_done:no_key  | .               | <-; $setm(); ->[ \t\n];                          | :values               |
+#+-----------------+-----------------+--------------------------------------------------+-----------------------+
+#| :values         | [\n]            | $endm(); @s.add_pair(attr_key, @a);              | <return>              |
+#| :values         | [ \t]           | ->;                                              | :values               |
+#| :values         | [#]             | $endm(); @s.add_pair(attr_key, @a); ->[\n];      | <return>              |
+#| :values         | [:]             | ->;
+

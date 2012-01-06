@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
 
+# This is super-ghetto code being used to generate super-un-ghetto code, which
+# is what I really care about.
 # TODO:
 #   * Generic and specific EOF handling
 #   * Some missing semicolons
@@ -9,6 +11,11 @@
 #   * Generate to 3 files (source c, public h, private h)
 #   * Structure/enum code generation
 #   * Generate initialization functions
+#   * Accumulation operator macros etc.
+#
+#   (Extra credit)
+#   * Sprinkle generated code with comments that are the original source
+#
 class GM
   attr_accessor :name, :body, :epoints, :allocators
   def initialize
