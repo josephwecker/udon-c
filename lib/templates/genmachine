@@ -4,8 +4,6 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * Check for not-yet-implemented function locations and create stubs
-#   * Emit warnings on unimplemented
 #   * Generate "shortcircuited" parse-group functions
 #     * Make sure eof check always happens on initial state
 #   * Structure/enum code generation
@@ -19,6 +17,12 @@
 INDENTS = 4
 COL_2 = 32
 
+def unprocessed(context, c, &src)
+  $stderr.print "Warning: unprocessed (#{context}): "
+  $stderr.puts c.inspect
+  c = yield
+  return c
+end
 
 class GM
   attr_accessor :name, :body, :epoints, :allocators
@@ -53,7 +57,7 @@ class GM
         @body << f
         c = f.parse(&src)
       else
-        require 'pp'; print "unprocessed (toplevel): "; pp c; c = yield
+        c = unprocessed('toplevel', c, &src)
       end
     end
   end
@@ -69,7 +73,7 @@ class GM
       else res[:state] = part.gsub(/-/,'_') end
       res
     end
-    @epoints << loc if loc[:function] && loc[:state]  # will mean create extra functions
+    @epoints << loc if loc[:function]
     res = [loc[:function], loc[:state], loc[:substate]].compact
     res = res.join('__')
     res += '(p)' if loc[:function]
@@ -82,11 +86,25 @@ class GM
     return fname + '()'
   end
 
-  def type_name(n)      @name.capitalize         + n end
-  def const_name(n)     @name.upcase+'_'         + n end
-  def function_name(n)  '_' + @name.downcase+'_' + n end
+  def type_name(n)      @name.capitalize         + n  end
+  def const_name(n)     @name.upcase+'_'         + n  end
+  def function_name(n)  '_' + @name.downcase+'_' + n  end
+  def real_fname(n)     n.split('_')[2..-1].join('_') end
 
-  def to_str() @body.map{|b| b.to_str}.join("\n\n") end
+  def to_str()
+    fnames = @body.select{|b| b.is_a? GMFunction}.map{|b| b.name}
+    @epoints.each do |expect|
+      unless fnames.include?(expect[:function])
+        $stderr.puts("Warning: missing functional group: #{real_fname(expect[:function])}")
+        f = GMFunction.new(self, expect[:function], "static inline void *")
+        f.body << GMCommand.new(f, "_#{@name.upcase}_ERR(\"Parser for '#{real_fname(expect[:function])}' not yet implemented.\")")
+        f.body << GMCommand.new(f, "return NULL")
+        @body << f
+      end
+    end
+
+    @body.map{|b| b.to_str}.join("\n\n")
+  end
 
   def to_liquid() self.to_str end
 end
@@ -282,7 +300,7 @@ class GMCommand < GMGenericChild
 end
 
 class GMFunction < GMGenericChild
-  attr_accessor :ftype, :expected, :implemented, :eof_handler
+  attr_accessor :ftype, :expected, :implemented, :eof_handler, :needs_generic_eof
   def initialize(parent, name, return_type, inner=false)
     # Locals: type, name, declaration position, optional initialization value
     super(parent, name)
@@ -290,6 +308,7 @@ class GMFunction < GMGenericChild
     @implemented = {}
     @locals = {}
     @eof_handler = nil
+    @needs_generic_eof = false
     @ftype = inner ? register_return_type(return_type) : return_type
   end
 
@@ -325,7 +344,7 @@ class GMFunction < GMGenericChild
         @body << GMCommand.new(self, c[2])
         c = yield
       else
-        require 'pp'; print "unprocessed (function): "; pp c; c = yield
+        c = unprocessed('function', c, &src)
       end
     end
   end
@@ -342,18 +361,21 @@ class GMFunction < GMGenericChild
     res += @body.map{|b| b.to_str(ind)}.join('')
     @expected.each do |e, parts|
       unless @implemented[e]
-        msg = "Parser for '#{parts[:state].gsub(/^s_/,'')}' "
+        st = parts[:state].gsub(/^s_/,'')
+        msg = "Parser for '#{st}' in '#{gm.real_fname(@name)}' "
         msg += "(substate '#{parts[:substate]}') " if parts[:substate]
         msg += "not yet implemented."
         res += dent(ind)+e+":\n"
         res += dent(ind)+'    _'+gm.name.upcase+'_ERR("'+msg+"\");\n"
+        msg = "Warning: missing state for /#{gm.real_fname(@name)}: #{st}"
+        msg += " (substate #{parts[:substate]})" if parts[:substate]
+        $stderr.puts(msg)
       end
     end
-    res += dent(ind) + "_eof:\n"
-    if @eof_handler
-      res += @eof_handler.to_str(ind+1)
-    else
-      res += dent(ind+1) + "return self_res;\n"
+    if (@needs_generic_eof || @eof_handler)
+      res += dent(ind) + "_eof:\n"
+      if @eof_handler then res += @eof_handler.to_str(ind+1)
+      else res += dent(ind+1) + "return self_res;\n" end
     end
     res += dent(ind-1)+"}\n"
     return res
@@ -396,9 +418,7 @@ class GMState < GMGenericChild
       else
         res, c, is_done = check_basic_commands(c, &src)
         return c if is_done && res
-        unless res
-          require 'pp'; print "unprocessed (state): "; pp c; c = yield
-        end
+        c = unprocessed('state',c,&src) unless res
       end
     end
   end
@@ -418,6 +438,7 @@ class GMState < GMGenericChild
           r += dent(ind)+"} else {\n"
         else
           r += "goto _eof;\n"+ dent(ind)+"else {\n"
+          gmf.needs_generic_eof = true
         end
         ind += 1
         r += dent(ind)[0..-3] + "_inner_#{name}:\n"
@@ -462,9 +483,7 @@ class GMCase < GMGenericChild
       else
         res, c, is_done = check_basic_commands(c, &src)
         return c if is_done && res
-        unless res
-          require 'pp'; print "unprocessed (case): "; pp c; c = yield
-        end
+        c = unprocessed('case',c,&src) unless res
       end
     end
     @goto_eofcheck = $goto_eofcheck
@@ -525,9 +544,7 @@ class GMConditional < GMGenericChild
         return c
       else
         res, c, is_done = check_basic_commands(c, &src)
-        unless res
-          require 'pp'; print "unprocessed (if-statement): "; pp c; c = yield
-        end
+        c = unprocessed('if-statement',c,&src) unless res
       end
     end
   end
