@@ -4,8 +4,7 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * Generate "shortcircuited" parse-group functions
-#     * Make sure eof check always happens on initial state
+#   * Make sure eof check always happens on initial state
 #   * Structure/enum code generation
 #   * Generate initialization functions
 #   * Accumulation operator macros etc.
@@ -22,6 +21,18 @@ def unprocessed(context, c, &src)
   $stderr.puts c.inspect
   c = yield
   return c
+end
+
+def split_array(a, &block) # ghetto solution until Array::slice_before arrives
+  l = []; r = []
+  in_l = true
+  a.each do |e|
+    match = yield(e)
+    in_l = false if match
+    if in_l then l << e
+    else r << e end
+  end
+  return [l, r]
 end
 
 class GM
@@ -92,14 +103,17 @@ class GM
   def real_fname(n)     n.split('_')[2..-1].join('_') end
 
   def to_str()
-    fnames = @body.select{|b| b.is_a? GMFunction}.map{|b| b.name}
+    fnames = @body.select{|b| b.is_a? GMFunction}.reduce({}){|acc, b| acc[b.name] = b; acc}
     @epoints.each do |expect|
-      unless fnames.include?(expect[:function])
+      if fnames[expect[:function]].nil?
         $stderr.puts("Warning: missing functional group: #{real_fname(expect[:function])}")
         f = GMFunction.new(self, expect[:function], "static inline void *")
         f.body << GMCommand.new(f, "_#{@name.upcase}_ERR(\"Parser for '#{real_fname(expect[:function])}' not yet implemented.\")")
         f.body << GMCommand.new(f, "return NULL")
         @body << f
+      elsif expect[:state]
+        f = fnames[expect[:function]]
+        @body << f.copy_from(expect[:state])
       end
     end
 
@@ -300,7 +314,7 @@ class GMCommand < GMGenericChild
 end
 
 class GMFunction < GMGenericChild
-  attr_accessor :ftype, :expected, :implemented, :eof_handler, :needs_generic_eof
+  attr_accessor :ftype, :expected, :implemented, :eof_handler, :needs_generic_eof, :warnings
   def initialize(parent, name, return_type, inner=false)
     # Locals: type, name, declaration position, optional initialization value
     super(parent, name)
@@ -308,7 +322,9 @@ class GMFunction < GMGenericChild
     @implemented = {}
     @locals = {}
     @eof_handler = nil
+    @has_states = false
     @needs_generic_eof = false
+    @warnings = true
     @ftype = inner ? register_return_type(return_type) : return_type
   end
 
@@ -325,7 +341,19 @@ class GMFunction < GMGenericChild
     @locals[lname] = [ltype, linitval]
   end
 
+  def copy_from(start_state)
+    f = self.dup
+    f.name = @name + '__' + start_state
+    f.warnings = false
+
+    initial, rest = split_array(@body){|b| b.is_a?(GMState)}
+    pre_start, rest = split_array(rest){|b| b.name == start_state}
+    f.body = initial + rest + pre_start
+    return f
+  end
+
   def parse(&src)
+    $goto_eofcheck = true
     c = yield
     loop do
       if ['enum', 'struct', 'function'].include?(c[0])
@@ -335,7 +363,8 @@ class GMFunction < GMGenericChild
         c = @eof_handler.parse(&src)
       elsif c[0] == 'state'
         statename = 's_' + c[1].gsub(/-/,'_').gsub(':','')
-        st = GMState.new(self, statename)
+        st = GMState.new(self, statename, !@has_states)
+        @has_states = true
         @body << st
         @implemented[statename] = true
         c = st.parse(&src)
@@ -367,9 +396,11 @@ class GMFunction < GMGenericChild
         msg += "not yet implemented."
         res += dent(ind)+e+":\n"
         res += dent(ind)+'    _'+gm.name.upcase+'_ERR("'+msg+"\");\n"
-        msg = "Warning: missing state for /#{gm.real_fname(@name)}: #{st}"
-        msg += " (substate #{parts[:substate]})" if parts[:substate]
-        $stderr.puts(msg)
+        if @warnings
+          msg = "Warning: missing state for /#{gm.real_fname(@name)}: #{st}"
+          msg += " (substate #{parts[:substate]})" if parts[:substate]
+          $stderr.puts(msg)
+        end
       end
     end
     if (@needs_generic_eof || @eof_handler)
@@ -394,12 +425,14 @@ class GMEOF < GMGenericChild
 end
 
 class GMState < GMGenericChild
-  def initialize(p,n)
+  def initialize(p, n, first_state)
     super(p,n)
     @local_eof_handler = nil
+    @first_state = first_state
   end
 
   def parse(&src)
+    $goto_eofcheck = true if @first_state
     c = yield
     loop do
       if ['enum','struct','function','state'].include?(c[0])
