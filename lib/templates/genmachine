@@ -1,14 +1,14 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
 
-# This is super-ghetto code being used to generate super-un-ghetto code, which
-# is what I really care about.
+# This is super-ghetto code being used to generate super-awesome-fast code,
+# which is what I really care about.
 # TODO:
 #   * Generic and specific EOF handling
-#   * Some missing semicolons
 #   * Check for not-yet-implemented function locations and create stubs
+#   * Emit warnings on unimplemented
 #   * Generate "shortcircuited" parse-group functions
-#   * Generate to 3 files (source c, public h, private h)
+#     * Make sure eof check always happens on initial state
 #   * Structure/enum code generation
 #   * Generate initialization functions
 #   * Accumulation operator macros etc.
@@ -62,7 +62,9 @@ class GM
   def parse_location(loc)
     loc = loc.split(/(?=\/|:|\.)/)
     loc = loc.reduce({}) do |res, part|
-      if part[0..0] == '/' then res[:function] = function_name(part[1..-1])
+      if part[0..0] == '/'
+        res[:function] = function_name(part[1..-1])
+        $goto_eofcheck = true
       elsif part[0..0] == ':' then res[:state] = 's_' + part[1..-1].gsub(/-/,'_')
       elsif part[0..0] == '.' then res[:substate] = part[1..-1]
       else res[:state] = part.gsub(/-/,'_') end
@@ -111,7 +113,11 @@ class GMGenericChild
       else
         loc, lstr = gm.parse_location(c[2])
         gmf.expected[lstr] = loc
-        @body << GMCommand.new(self, "goto #{lstr}")
+        if ($goto_eofcheck || loc[:substate])
+          @body << GMCommand.new(self, "goto #{lstr}")
+        else
+          @body << GMCommand.new(self, "goto _inner_#{lstr}")
+        end
       end
       new_c = yield
       matched = true
@@ -173,7 +179,9 @@ class GMCommand < GMGenericChild
     @lside    = nil
     @rside    = nil
     if cmd.start_with? '/'; @cmd = gm.parse_location(cmd)[1]
-    elsif cmd == '->';      @operator = :advance
+    elsif cmd == '->'
+      @operator = :advance
+      $goto_eofcheck = true
     elsif cmd =~ /((!|=|<|(?<!-)>|\+|-(?!>))+)/
       @operator = $1
       lside, rside = cmd.split(@operator)
@@ -346,6 +354,11 @@ end
 
 
 class GMState < GMGenericChild
+  def initialize(p,n)
+    super(p,n)
+    @local_eof_handler = nil
+  end
+
   def parse(&src)
     c = yield
     loop do
@@ -372,17 +385,31 @@ class GMState < GMGenericChild
   def to_str(ind=1)
     res = dent(ind)+@name+":\n"
     ind += 1
+
     in_switch = false
     bod = @body.map do |b|
       r = ''
       if b.is_a?(GMCase) && !in_switch
+        r += dent(ind)+"if(_#{gm.name.upcase}_EOF) "
+        if @local_eof_handler
+          # TODO: YOU ARE HERE:
+          #  * parse specialized eof handlers
+          #  * emit them here
+          #  * special-parse function-wide eof handlers
+          #  * create default for functions if none specified
+        else
+          r += "goto _eof;\n"+ dent(ind)+"else {\n"
+        end
+        ind += 1
+        r += dent(ind)[0..-3] + "_inner_#{name}:\n"
+
         r += dent(ind)+"switch(*(p->curr)) {\n"
         in_switch = true; ind += 1
       end
       r + b.to_str(ind)
     end
     res += bod.join('')
-    res += dent(ind-1) + "}\n"
+    res += dent(ind-1) + "}\n" + dent(ind-2) + "}\n" if in_switch
     return res
   end
 end
@@ -400,9 +427,11 @@ class GMCase < GMGenericChild
       @chars = @name.split(//).map{|c| c.gsub("\n",'\\n').gsub("\t",'\\t').gsub("'","\\'").gsub("\\","\\\\")}
       gm.checked_newline = @chars.include?("\\n")
     end
+    @goto_eofcheck = false
   end
 
   def parse(&src)
+    $goto_eofcheck = false
     c = yield
     loop do
       if ['enum','struct','function','state','c','default'].include?(c[0])
@@ -419,6 +448,7 @@ class GMCase < GMGenericChild
         end
       end
     end
+    @goto_eofcheck = $goto_eofcheck
   end
 
   def to_str(ind=3)
@@ -517,7 +547,7 @@ end
 #------- Main loop (just feeding stuff to parser) --------
 # Pull in source and feed it, one part at a time, to wherever parse_source asks
 # with yield.
-content = ARGF.readlines.select{|c| c =~ /\s*\|/}.join('').split('|').map{|c| c.rstrip}.select{|c| c.strip != ''}
+content = ARGF.readlines.select{|c| c =~ /^\s*\|/}.join('').split('|').map{|c| c.rstrip}.select{|c| c.strip!=''}
 i = -1
 gm = GM.new
 gm.parse do |parser|

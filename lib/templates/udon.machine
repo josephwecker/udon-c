@@ -27,6 +27,7 @@
 
 |function[node:FullNode]  | inline=1 | ibase=COL | ipar=COL-1
   |state[:init]
+    #|eof                  | S.node_type=BLANK                      |return S
     |c[\n]    |.value1    | -> | S.node_type=VALUE                 |>> :value
     |c[ \t]   |.value2    | -> | S.node_type=VALUE                 |>> :value
     |c[:]     |.attr      | ->                                     |>> :attribute
@@ -37,6 +38,7 @@
     |c[{]     |.embed     |err Embedded nodes are not yet supported
     |default  |.name      | S.name=/label                          |>> :identity
   |state[:identity]
+    #|eof                  |                                        |return S
     |c[ \t]   |.lead      | ->                                     |>>
     |c[<LBR>] |.id        | S.id=/id                               |>>
     |c[.]     |.class     | ->| S.classes<</label                  |>>
@@ -45,7 +47,8 @@
   |state[:child]
     |c[ \t]   |.lead      | ->                                     |>>
     |c[\n]    |.nl        |if[!inline] | C<<Node |endif | inline=0 |>>
-    |c[#]     |.comment   |
+    |c[#]     |.comment   | -> | /comment                          |>>
+# TODO: comment does advanced skipping
 
 
 |function[label:STRING]   | lvl=0
@@ -54,6 +57,7 @@
     |c[ \t\n<LBR><PIPE>.!]|.done| MARK_END                         |return S
     |default  |.collect   | ->                                     |>>
   |state[:delim]
+    #|eof      |err Unexpected end of file - missing closing ')'
     |c[(]     |.nest      | -> | lvl+=1                            |>>
     |c[)]     |.unnest    | -> | lvl-=1
       |if[lvl==0]                                                  |return S
@@ -74,8 +78,5 @@
   * For anything that is LIST or that has an append operator on it, another
     field to hold the head (or tail, whichever way it's implemented).
   * For structs, create the prefix_new_... functions
-
-
-
 
 
