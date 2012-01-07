@@ -27,7 +27,7 @@
 
 |function[node:FullNode]  | inline=1 | ibase=COL | ipar=COL-1
   |state[:init]
-    #|eof                  | S.node_type=BLANK                      |return S
+    |eof                  | S.node_type=BLANK                      |return S
     |c[\n]    |.value1    | -> | S.node_type=VALUE                 |>> :value
     |c[ \t]   |.value2    | -> | S.node_type=VALUE                 |>> :value
     |c[:]     |.attr      | ->                                     |>> :attribute

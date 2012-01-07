@@ -88,6 +88,8 @@ class GM
   def function_name(n)  '_' + @name.downcase+'_' + n end
 
   def to_str() @body.map{|b| b.to_str}.join("\n\n") end
+
+  def to_liquid() self.to_str end
 end
 
 class GMGenericChild
@@ -352,6 +354,16 @@ class GMFunction < GMGenericChild
   end
 end
 
+class GMEOF < GMGenericChild
+  def parse(&src)
+    c = yield
+    loop do
+      res, c, is_done = check_basic_commands(c, &src)
+      return c if (!res || is_done)
+    end
+  end
+  def to_str(ind) @body.map{|b| b.to_str(ind)}.join('') end
+end
 
 class GMState < GMGenericChild
   def initialize(p,n)
@@ -372,6 +384,9 @@ class GMState < GMGenericChild
         dstmt = GMCase.new(self, nil)
         @body << dstmt
         c = dstmt.parse(&src)
+      elsif c[0] == 'eof'
+        @local_eof_handler = GMEOF.new(self, nil)
+        c = @local_eof_handler.parse(&src)
       else
         res, c, is_done = check_basic_commands(c, &src)
         return c if is_done && res
@@ -392,6 +407,7 @@ class GMState < GMGenericChild
       if b.is_a?(GMCase) && !in_switch
         r += dent(ind)+"if(_#{gm.name.upcase}_EOF) "
         if @local_eof_handler
+          r += "GOTCHA"
           # TODO: YOU ARE HERE:
           #  * parse specialized eof handlers
           #  * emit them here
@@ -582,5 +598,3 @@ templates.each do |filename, t|
   filename = filename.gsub('parser',gm.name)
   open(filename,'w'){|f| f.write(result)}
 end
-
-puts gm.to_str
