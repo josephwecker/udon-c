@@ -4,7 +4,6 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * Generic and specific EOF handling
 #   * Check for not-yet-implemented function locations and create stubs
 #   * Emit warnings on unimplemented
 #   * Generate "shortcircuited" parse-group functions
@@ -283,18 +282,15 @@ class GMCommand < GMGenericChild
 end
 
 class GMFunction < GMGenericChild
-  attr_accessor :ftype, :expected, :implemented
+  attr_accessor :ftype, :expected, :implemented, :eof_handler
   def initialize(parent, name, return_type, inner=false)
     # Locals: type, name, declaration position, optional initialization value
     super(parent, name)
     @expected = {}  # states and substates that will be jumped to
     @implemented = {}
     @locals = {}
-    if inner
-      @ftype = register_return_type(return_type)
-    else
-      @ftype = return_type
-    end
+    @eof_handler = nil
+    @ftype = inner ? register_return_type(return_type) : return_type
   end
 
   def register_return_type(rt)
@@ -315,15 +311,19 @@ class GMFunction < GMGenericChild
     loop do
       if ['enum', 'struct', 'function'].include?(c[0])
         return c
-      elsif c[0] == ''
-        @body << GMCommand.new(self, c[2])
-        c = yield
+      elsif c[0] == 'eof'
+        @eof_handler = GMEOF.new(self, nil)
+        c = @eof_handler.parse(&src)
       elsif c[0] == 'state'
         statename = 's_' + c[1].gsub(/-/,'_').gsub(':','')
         st = GMState.new(self, statename)
         @body << st
         @implemented[statename] = true
         c = st.parse(&src)
+      elsif c[0] == ''
+        # TODO: real commands loop
+        @body << GMCommand.new(self, c[2])
+        c = yield
       else
         require 'pp'; print "unprocessed (function): "; pp c; c = yield
       end
@@ -348,6 +348,12 @@ class GMFunction < GMGenericChild
         res += dent(ind)+e+":\n"
         res += dent(ind)+'    _'+gm.name.upcase+'_ERR("'+msg+"\");\n"
       end
+    end
+    res += dent(ind) + "_eof:\n"
+    if @eof_handler
+      res += @eof_handler.to_str(ind+1)
+    else
+      res += dent(ind+1) + "return self_res;\n"
     end
     res += dent(ind-1)+"}\n"
     return res
@@ -407,12 +413,9 @@ class GMState < GMGenericChild
       if b.is_a?(GMCase) && !in_switch
         r += dent(ind)+"if(_#{gm.name.upcase}_EOF) "
         if @local_eof_handler
-          r += "GOTCHA"
-          # TODO: YOU ARE HERE:
-          #  * parse specialized eof handlers
-          #  * emit them here
-          #  * special-parse function-wide eof handlers
-          #  * create default for functions if none specified
+          r += "{\n"
+          r += @local_eof_handler.to_str(ind+1)
+          r += dent(ind)+"} else {\n"
         else
           r += "goto _eof;\n"+ dent(ind)+"else {\n"
         end

@@ -38,7 +38,6 @@
     |c[{]     |.embed     |err Embedded nodes are not yet supported
     |default  |.name      | S.name=/label                          |>> :identity
   |state[:identity]
-    #|eof                  |                                        |return S
     |c[ \t]   |.lead      | ->                                     |>>
     |c[<LBR>] |.id        | S.id=/id                               |>>
     |c[.]     |.class     | ->| S.classes<</label                  |>>
@@ -51,8 +50,9 @@
 # TODO: comment does advanced skipping
 
 
-|function[label:STRING]   | lvl=0
-  |state[:init]           | MARK
+|function[label:STRING]   | lvl=0 | MARK
+  |eof                    | MARK_END                               |return S
+  |state[:init]
     |c[(]     |.delim     |                                        |>> :delim.nest
     |c[ \t\n<LBR><PIPE>.!]|.done| MARK_END                         |return S
     |default  |.collect   | ->                                     |>>
@@ -65,7 +65,6 @@
       |endif
     |c[\n]    |.collect1  | ->                                     |>>
     |default  |.collect2  | ->                                     |>>
-  |state[eof]             | MARK_END                               |return S
 
 
 
