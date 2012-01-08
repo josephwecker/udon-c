@@ -8,6 +8,7 @@
 #   * Structure/enum code generation
 #   * Generate initialization functions
 #   * Accumulation operator macros etc.
+#   * Move parser_private.h to the c file. one less thing to worry about.
 #
 #   (Extra credit)
 #   * Sprinkle generated code with comments that are the original source
@@ -36,11 +37,11 @@ def split_array(a, &block) # ghetto solution until Array::slice_before arrives
 end
 
 class GM
-  attr_accessor :name, :body, :epoints, :allocators
+  attr_accessor :name, :body, :epoints, :allocators, :enums, :structs
   def initialize
     @name = ''
-    @body = []
-    @epoints = []
+    @body = [];   @epoints = []
+    @enums = [];  @structs = []
     @checked_newline = false
     @allocators = {}
   end
@@ -67,6 +68,14 @@ class GM
         f = GMFunction.new(self, function_name(fname), ftype, true)
         @body << f
         c = f.parse(&src)
+      elsif c[0] == 'enum'
+        e = GMEnum.new(self, c[1])
+        @enums << e
+        c = e.parse(&src)
+      elsif c[0] == 'struct'
+        s = GMStruct.new(self, c[1])
+        @structs << s
+        c = s.parse(&src)
       else
         c = unprocessed('toplevel', c, &src)
       end
@@ -103,6 +112,9 @@ class GM
   def real_fname(n)     n.split('_')[2..-1].join('_') end
 
   def to_str()
+    #r = @enums.map{|e| e.to_str}.join("\n\n")
+    #r += @structs.map{|s| s.to_str}.join("\n\n")
+
     fnames = @body.select{|b| b.is_a? GMFunction}.reduce({}){|acc, b| acc[b.name] = b; acc}
     @epoints.each do |expect|
       if fnames[expect[:function]].nil?
@@ -117,7 +129,7 @@ class GM
       end
     end
 
-    @body.map{|b| b.to_str}.join("\n\n")
+    (@enums + @structs + @body).map{|b| b.to_str}.join("\n\n")
   end
 
   def to_liquid() self.to_str end
@@ -198,6 +210,51 @@ class GMGenericChild
   def dent(i) ' '*i*INDENTS end
   def to_str(ind=0) return "#{dent(ind)}<unimplemented #{self.class.to_s}>\n" end
 end
+
+class GMEnum < GMGenericChild
+  def parse
+    c = yield
+    loop do
+      if ['struct','enum','function','parser','entry-point'].include?(c[0])
+        return c
+      else
+        @body << c[0].upcase
+        c = yield
+      end
+    end
+  end
+
+  def to_str(ind=0)
+    n = gm.type_name(@name)
+    r = dent(ind)+"enum #{n} {\n"
+    r += @body.map{|b| dent(ind+1)+gm.const_name(b)}.join(",\n")
+    r += "\n"+dent(ind)+"};\n"
+    r += dent(ind)+"typedef enum #{n} #{n};\n"
+  end
+end
+
+class GMStruct < GMGenericChild
+  def parse
+    c = yield
+    loop do
+      if ['struct', 'enum', 'function', 'parser', 'entry-point'].include?(c[0])
+        return c
+      else
+        @body << [c[0], c[2]]
+        c = yield
+      end
+    end
+  end
+
+  def to_str(ind=0)
+    n =  gm.type_name(@name)
+    r =  dent(ind)+"struct #{n} {\n"
+    r += @body.map{|b| dent(ind+1)+b[1] + '    ' + b[0]}.join(";\n")
+    r += "\n"+dent(ind)+"}; typedef struct #{n} #{n};\n"
+    return r
+  end
+end
+
 
 class GMCommand < GMGenericChild
   attr_accessor :ignore, :statement
