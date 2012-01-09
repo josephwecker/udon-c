@@ -4,7 +4,6 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * Generate initialization functions
 #   * Accumulation operator macros etc.
 #   * Move parser_private.h to the c file. one less thing to worry about.
 #   * Dots to arrow for struct member referencing.
@@ -13,6 +12,8 @@
 #   (Extra credit)
 #   * Sprinkle generated code with comments that are the original source
 #   * Make sure eof check always happens on initial state
+#   * Some way to get out of memory error messages to emit the real source
+#     (i.e., turn into a macro somehow)
 #
 
 INDENTS = 4
@@ -35,6 +36,12 @@ def split_array(a, &block) # ghetto solution until Array::slice_before arrives
     else r << e end
   end
   return [l, r]
+end
+
+class String
+  def to_camel
+    self.gsub(/(?<=[a-z])(?=[A-Z])/,'_').downcase
+  end
 end
 
 class GM
@@ -107,7 +114,7 @@ class GM
   end
 
   def allocator(for_type)
-    fname = '_new_' + type_map(for_type, false).downcase
+    fname = '_new_' + type_map(for_type, false).to_camel
     @allocators[for_type] = fname
     return fname + '()'
   end
@@ -156,7 +163,14 @@ class GM
 
   def add_allocators
     return if @all_ensured
-
+    @allocators.each do |for_type, fname|
+      ft = type_map(for_type)
+      f = GMFunction.new(self, fname, "static inline #{ft}")
+      f.register_local(ft,'res',"(#{ft})#{@name}_malloc(sizeof(#{type_map(for_type,false)}))")
+      f.body << GMCommand.new(f, "if(!res) _#{@name.upcase}_MEM_ERR(\"Memory allocation failed for #{for_type}.\")")
+      f.body << GMCommand.new(f, "return res")
+      @body << f
+    end
     @all_ensured = true
   end
 
@@ -338,7 +352,7 @@ class GMCommand < GMGenericChild
     elsif cmd == '->'
       @operator = :advance
       $goto_eofcheck = true
-    elsif cmd =~ /((!|=|<|(?<!-)>|\+|-(?!>))+)/
+    elsif cmd =~ /[^\(]((!|=|<|(?<!-)>|\+|-(?!>))+)/
       @operator = $1
       lside, rside = cmd.split(@operator)
       @lside = parse_side(lside)
