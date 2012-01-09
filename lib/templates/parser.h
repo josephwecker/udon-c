@@ -38,6 +38,31 @@ extern char {{parser}}_global_error_msg[128];
  *
  */
 
+{% if use_gmstring %}
+struct {{parser|cap}}GmString {
+    char *                       start;
+    uint64_t                     length;
+};
+typedef struct {{parser|cap}}GmString      {{parser|cap}}GmString;
+{% endif %}
+{% if use_gmlist %}
+struct {{parser|cap}}GmList {
+    void *                       v;
+    struct {{parser|cap}}List *            next;
+};
+typedef struct {{parser|cap}}GmList        {{parser|cap}}GmList;
+{% endif %}
+{% if use_gmdict %}
+struct {{parser|cap}}GmDict {
+    {{parser|cap}}GmList                   keys;
+    {{parser|cap}}GmList                   keys__tail;
+    struct hsearch_data *        table;
+    uint64_t                     size;
+    uint64_t                     allocated;
+};
+typedef struct {{parser|cap}}GmDict        {{parser|cap}}GmDict;
+{% endif %}
+
 {% for e in enums %}
 {{e}}
 

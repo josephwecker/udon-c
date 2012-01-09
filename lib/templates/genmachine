@@ -40,7 +40,8 @@ def split_array(a, &block) # ghetto solution until Array::slice_before arrives
 end
 
 class GM
-  attr_accessor :name, :body, :epoints, :allocators, :enums, :structs, :used_types
+  attr_accessor :name, :body, :epoints, :allocators, :enums, :structs,
+    :used_types, :use_gmstring, :use_gmlist, :use_gmdict
   def initialize
     @used_types = {}
     @name = ''
@@ -49,6 +50,7 @@ class GM
     @enum_names = []
     @checked_newline = false
     @allocators = {}
+    @use_gmstring = @use_gmlist = @use_gmdict = false
   end
 
   def checked_newline?() return @checked_newline end
@@ -130,9 +132,10 @@ class GM
   def function_name(n)  '_' + @name.downcase+'_' + n  end
   def real_fname(n)     n.split('_')[2..-1].join('_') end
 
-  def ensure_secondary_functions
+  def ensure_secondary
     add_entrypoints
     add_allocators
+    add_builtin_structs
   end
 
   def add_entrypoints
@@ -156,13 +159,20 @@ class GM
   def add_allocators
     return if @all_ensured
 
-
-
     @all_ensured = true
   end
 
+  def add_builtin_structs
+    @used_types.keys.each do |t|
+      @use_gmstring = true if t == 'STRING'
+      @use_gmlist   = true if t == 'LIST'
+      @use_gmdict   = true if t == 'DICT'
+    end
+  end
+
+
   def output_functions()
-    ensure_secondary_functions
+    ensure_secondary
     @body.map{|b| b.to_str}
   end
 
@@ -170,7 +180,7 @@ class GM
   def output_structs()   @structs.map{|s| s.to_str} end
 
   def output_private_prototypes()
-    ensure_secondary_functions
+    ensure_secondary
   end
 
   def output_public_prototypes()
@@ -751,10 +761,13 @@ templates = ['parser.c', 'parser_private.h', 'parser.h']
 templates.map!{|t| [t, Liquid::Template.parse(IO.read($d+t))]}
 
 context = {
-  'functions' => gm.output_functions,
-  'enums'     => gm.output_enums,
-  'structs'   => gm.output_structs,
-  'parser'    => gm.name
+  'functions'    => gm.output_functions,
+  'enums'        => gm.output_enums,
+  'structs'      => gm.output_structs,
+  'use_gmstring' => gm.use_gmstring,
+  'use_gmlist'   => gm.use_gmlist,
+  'use_gmdict'   => gm.use_gmdict,
+  'parser'       => gm.name
 }
 
 
