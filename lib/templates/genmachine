@@ -130,7 +130,12 @@ class GM
   def function_name(n)  '_' + @name.downcase+'_' + n  end
   def real_fname(n)     n.split('_')[2..-1].join('_') end
 
-  def ensure_all_entrypoints
+  def ensure_secondary_functions
+    add_entrypoints
+    add_allocators
+  end
+
+  def add_entrypoints
     return if @ep_ensured
     fnames = @body.select{|b| b.is_a? GMFunction}.reduce({}){|acc, b| acc[b.name] = b; acc}
     @epoints.each do |expect|
@@ -148,8 +153,16 @@ class GM
     @ep_ensured = true
   end
 
+  def add_allocators
+    return if @all_ensured
+
+
+
+    @all_ensured = true
+  end
+
   def output_functions()
-    ensure_all_entrypoints
+    ensure_secondary_functions
     @body.map{|b| b.to_str}
   end
 
@@ -157,7 +170,7 @@ class GM
   def output_structs()   @structs.map{|s| s.to_str} end
 
   def output_private_prototypes()
-    ensure_all_entrypoints
+    ensure_secondary_functions
   end
 
   def output_public_prototypes()
