@@ -15,7 +15,7 @@
 #  |num_allocated Z+
 
 |struct[FullNode < Node]
-  |children      Node *
+  |children      Node
   |name          STRING
   |id            STRING
   |classes       LIST

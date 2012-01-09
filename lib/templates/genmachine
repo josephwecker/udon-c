@@ -5,10 +5,12 @@
 # which is what I really care about.
 # TODO:
 #   * Make sure eof check always happens on initial state
-#   * Structure/enum code generation
 #   * Generate initialization functions
+#   * Builtin struct definitions
 #   * Accumulation operator macros etc.
 #   * Move parser_private.h to the c file. one less thing to worry about.
+#   * Dots to arrow for struct member referencing.
+#   * (eventuall) - move templates inline so script is self-containing
 #
 #   (Extra credit)
 #   * Sprinkle generated code with comments that are the original source
@@ -37,11 +39,13 @@ def split_array(a, &block) # ghetto solution until Array::slice_before arrives
 end
 
 class GM
-  attr_accessor :name, :body, :epoints, :allocators, :enums, :structs
+  attr_accessor :name, :body, :epoints, :allocators, :enums, :structs, :used_types
   def initialize
+    @used_types = {}
     @name = ''
     @body = [];   @epoints = []
     @enums = [];  @structs = []
+    @enum_names = []
     @checked_newline = false
     @allocators = {}
   end
@@ -71,6 +75,7 @@ class GM
       elsif c[0] == 'enum'
         e = GMEnum.new(self, c[1])
         @enums << e
+        @enum_names << c[1]
         c = e.parse(&src)
       elsif c[0] == 'struct'
         s = GMStruct.new(self, c[1])
@@ -101,20 +106,32 @@ class GM
   end
 
   def allocator(for_type)
-    fname = '_new_' + @name.downcase + '_' + for_type.downcase
+    #fname = '_new_' + @name.downcase + '_' + for_type.downcase
+    fname = '_new_' + type_map(for_type, false).downcase
     @allocators[for_type] = fname
     return fname + '()'
   end
 
-  def type_name(n)      @name.capitalize         + n  end
+  def type_map(t, inc_pointer=true)
+    @used_types[t] = true
+    p = (inc_pointer && !@enum_names.include?(t)) ? ' *' : ''
+    cap = @name.capitalize
+    case
+    when t=='Z+';           'uint64_t'
+    when t=='LIST';         cap+'GmList'+p
+    when t=='STRING';       cap+'GmString'+p
+    when t=='DICT';         cap+'GmDict'+p
+    when t=~/^[A-Z]+[a-z]/; cap+t+p
+    else t
+    end
+  end
+
+  #def type_name(n)      @name.capitalize         + n  end
   def const_name(n)     @name.upcase+'_'         + n  end
   def function_name(n)  '_' + @name.downcase+'_' + n  end
   def real_fname(n)     n.split('_')[2..-1].join('_') end
 
   def to_str()
-    #r = @enums.map{|e| e.to_str}.join("\n\n")
-    #r += @structs.map{|s| s.to_str}.join("\n\n")
-
     fnames = @body.select{|b| b.is_a? GMFunction}.reduce({}){|acc, b| acc[b.name] = b; acc}
     @epoints.each do |expect|
       if fnames[expect[:function]].nil?
@@ -225,32 +242,44 @@ class GMEnum < GMGenericChild
   end
 
   def to_str(ind=0)
-    n = gm.type_name(@name)
+    n = gm.type_map(@name, false)
     r = dent(ind)+"enum #{n} {\n"
     r += @body.map{|b| dent(ind+1)+gm.const_name(b)}.join(",\n")
     r += "\n"+dent(ind)+"};\n"
-    r += dent(ind)+"typedef enum #{n} #{n};\n"
+    i = COL_2 - (ind*INDENTS)
+    r += dent(ind)+"typedef enum #{n}".ljust(i,' ')+" #{n};\n"
+    return r
   end
 end
 
 class GMStruct < GMGenericChild
+  def initialize(p, n)
+    super(p, n)
+    @name = @name.split('<').map{|p| p.strip}
+    @struct_parent = @name[1]
+    @name = @name[0]
+  end
+
   def parse
     c = yield
     loop do
       if ['struct', 'enum', 'function', 'parser', 'entry-point'].include?(c[0])
         return c
       else
-        @body << [c[0], c[2]]
+        @body << [c[0], gm.type_map(c[2])]
         c = yield
       end
     end
   end
 
   def to_str(ind=0)
-    n =  gm.type_name(@name)
+    n =  gm.type_map(@name, false)
     r =  dent(ind)+"struct #{n} {\n"
-    r += @body.map{|b| dent(ind+1)+b[1] + '    ' + b[0]}.join(";\n")
-    r += "\n"+dent(ind)+"}; typedef struct #{n} #{n};\n"
+    i = COL_2 - ((ind+1)*INDENTS)
+    r += dent(ind+1)+gm.type_map(@struct_parent,false).ljust(i,' ') + " _base;\n\n" if @struct_parent
+    r += @body.map{|b| dent(ind+1)+b[1].ljust(i,' ') + ' ' + b[0]}.join(";\n")
+    r += "\n"+dent(ind)+"};\n"
+    r += dent(ind)+"typedef struct #{n}".ljust(i+INDENTS,' ')+" #{n};\n"
     return r
   end
 end
@@ -281,9 +310,9 @@ class GMCommand < GMGenericChild
         # Assignment: might need to make sure local variable exists etc.
         if @lside[1] !~ /\.|->/
           if @rside[0] == :number
-            ltype = 'uint64_t'
+            ltype = gm.type_map('Z+')
           elsif @rside[0] == :type
-            ltype = gm.type_name(@rside[1]) + ' *'
+            ltype = gm.type_map(@rside[1])
             @rside[1] = gm.allocator(@rside[1])
           end
 
@@ -301,7 +330,7 @@ class GMCommand < GMGenericChild
     else
       @cmd = parse_side(cmd)
       if @cmd[0] == :acc
-        gmf.register_local('GMString *', @cmd[1][1], gm.allocator('GMString'))
+        gmf.register_local(gm.type_map('STRING'), @cmd[1][1], gm.allocator('STRING'))
         @operator = '='
         if @cmd[1][0] == 'mark'
           @lside = @cmd[1][1]+'->start'
@@ -341,7 +370,7 @@ class GMCommand < GMGenericChild
     stype, sval = statement
     if [:general, :number, :location].include?(stype); return sval
     elsif stype == :const; return gm.const_name(sval)
-    elsif stype == :type;  return gm.type_name(sval)
+    elsif stype == :type;  return gm.type_map(sval)
     else return statement end
   end
 
@@ -387,10 +416,13 @@ class GMFunction < GMGenericChild
 
   def register_return_type(rt)
     return if rt.nil?
-    if rt == 'STRING'; base_type = 'GMString'
-    elsif rt =~ /^[A-Z]+[a-z]+[a-zA-Z]*$/ ; base_type = gm.type_name(rt) end
-    register_local(base_type +' *', 'self_res', gm.allocator(base_type))
-    return "static inline #{base_type} *"
+    base_type = gm.type_map(rt)
+    register_local(base_type, 'self_res', gm.allocator(rt))
+    return "static inline #{base_type}"
+    #if rt == 'STRING'; base_type = 'GmString'
+    #elsif rt =~ /^[A-Z]+[a-z]+[a-zA-Z]*$/ ; base_type = gm.type_name(rt) end
+    #register_local(base_type +' *', 'self_res', gm.allocator(base_type))
+    #return "static inline #{base_type} *"
   end
 
   def register_local(ltype, lname, linitval=nil)
