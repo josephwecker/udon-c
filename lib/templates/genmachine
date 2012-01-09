@@ -4,6 +4,7 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
+#   * for LIST types in structs, automatic head pointer (for aggregation)
 #   * Generate initialization functions
 #   * Builtin struct definitions
 #   * Accumulation operator macros etc.

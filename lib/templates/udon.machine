@@ -8,20 +8,12 @@
   |source_line   Z+
   |source_column Z+
 
-#|struct[Attributes]
-#  |keys          LIST
-#  |hash_table    struct hsearch_data *
-#  |size          Z+
-#  |num_allocated Z+
-
 |struct[FullNode < Node]
   |children      Node
   |name          STRING
   |id            STRING
   |classes       LIST
   |attributes    DICT
-
-
 
 |entry-point /node:child-shortcut
 
@@ -65,17 +57,3 @@
       |endif
     |c[\n]    |.collect1  | ->                                     |>>
     |default  |.collect2  | ->                                     |>>
-
-
-
-# C shorthands TODO:
-  * Prefix main types
-  * Use _base for inheritance
-  * LIST   -> GenMachineLL
-  * Z+     -> uint64_t
-  * STRING -> char * (maybe in the future w_char?) _and_ separate length
-  * For anything that is LIST or that has an append operator on it, another
-    field to hold the head (or tail, whichever way it's implemented).
-  * For structs, create the prefix_new_... functions
-
-
