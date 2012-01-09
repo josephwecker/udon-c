@@ -4,9 +4,7 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * for LIST types in structs, automatic head pointer (for aggregation)
 #   * Generate initialization functions
-#   * Builtin struct definitions
 #   * Accumulation operator macros etc.
 #   * Move parser_private.h to the c file. one less thing to worry about.
 #   * Dots to arrow for struct member referencing.
@@ -41,12 +39,12 @@ end
 
 class GM
   attr_accessor :name, :body, :epoints, :allocators, :enums, :structs,
-    :used_types, :use_gmstring, :use_gmlist, :use_gmdict
+    :used_types, :use_gmstring, :use_gmlist, :use_gmdict, :listy
   def initialize
     @used_types = {}
     @name = ''
     @body = [];   @epoints = []
-    @enums = [];  @structs = []
+    @enums = [];  @structs = [];  @listy = ['LIST']
     @enum_names = []
     @checked_newline = false
     @allocators = {}
@@ -294,6 +292,8 @@ class GMStruct < GMGenericChild
     @name = @name.split('<').map{|p| p.strip}
     @struct_parent = @name[1]
     @name = @name[0]
+
+    gm.listy << @name if gm.listy.include?(@struct_parent)
   end
 
   def parse
@@ -303,6 +303,7 @@ class GMStruct < GMGenericChild
         return c
       else
         @body << [c[0], gm.type_map(c[2])]
+        @body << ['_' + c[0] + '__tail', gm.type_map(c[2])] if gm.listy.include?(c[2])
         c = yield
       end
     end
@@ -314,7 +315,7 @@ class GMStruct < GMGenericChild
     i = COL_2 - ((ind+1)*INDENTS)
     r += dent(ind+1)+gm.type_map(@struct_parent,false).ljust(i,' ') + " _base;\n\n" if @struct_parent
     r += @body.map{|b| dent(ind+1)+b[1].ljust(i,' ') + ' ' + b[0]}.join(";\n")
-    r += "\n"+dent(ind)+"};\n"
+    r += ";\n"+dent(ind)+"};\n"
     r += dent(ind)+"typedef struct #{n}".ljust(i+INDENTS,' ')+" #{n};\n"
     return r
   end

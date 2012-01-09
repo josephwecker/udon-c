@@ -55,7 +55,7 @@ typedef struct {{parser|cap}}GmList        {{parser|cap}}GmList;
 {% if use_gmdict %}
 struct {{parser|cap}}GmDict {
     {{parser|cap}}GmList                   keys;
-    {{parser|cap}}GmList                   keys__tail;
+    {{parser|cap}}GmList                   _keys__tail;
     struct hsearch_data *        table;
     uint64_t                     size;
     uint64_t                     allocated;
