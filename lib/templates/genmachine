@@ -4,16 +4,16 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * Make sure eof check always happens on initial state
 #   * Generate initialization functions
 #   * Builtin struct definitions
 #   * Accumulation operator macros etc.
 #   * Move parser_private.h to the c file. one less thing to worry about.
 #   * Dots to arrow for struct member referencing.
-#   * (eventuall) - move templates inline so script is self-containing
+#   * (eventually) - move templates inline so script is self-containing
 #
 #   (Extra credit)
 #   * Sprinkle generated code with comments that are the original source
+#   * Make sure eof check always happens on initial state
 #
 
 INDENTS = 4
@@ -106,7 +106,6 @@ class GM
   end
 
   def allocator(for_type)
-    #fname = '_new_' + @name.downcase + '_' + for_type.downcase
     fname = '_new_' + type_map(for_type, false).downcase
     @allocators[for_type] = fname
     return fname + '()'
@@ -126,12 +125,19 @@ class GM
     end
   end
 
-  #def type_name(n)      @name.capitalize         + n  end
   def const_name(n)     @name.upcase+'_'         + n  end
   def function_name(n)  '_' + @name.downcase+'_' + n  end
   def real_fname(n)     n.split('_')[2..-1].join('_') end
 
   def to_str()
+    '<implementing different interface>' # TODO: remove when templates etc. updated
+  end
+
+
+  def output_functions()
+    # Also attaches reorganized functions here since we're sure parsing is done.
+    # TODO: do reorganizing lazily separately so you can emit prototypes first
+    # etc. if desired.
     fnames = @body.select{|b| b.is_a? GMFunction}.reduce({}){|acc, b| acc[b.name] = b; acc}
     @epoints.each do |expect|
       if fnames[expect[:function]].nil?
@@ -145,11 +151,19 @@ class GM
         @body << f.copy_from(expect[:state])
       end
     end
-
-    (@enums + @structs + @body).map{|b| b.to_str}.join("\n\n")
+    @body.map{|b| b.to_str}
   end
 
-  def to_liquid() self.to_str end
+  def output_enums()   @enums.map{|e| e.to_str} end
+  def output_structs() @structs.map{|s| s.to_str} end
+
+  def output_private_prototypes()
+
+  end
+
+  def output_public_prototypes()
+
+  end
 end
 
 class GMGenericChild
@@ -402,16 +416,15 @@ end
 class GMFunction < GMGenericChild
   attr_accessor :ftype, :expected, :implemented, :eof_handler, :needs_generic_eof, :warnings
   def initialize(parent, name, return_type, inner=false)
-    # Locals: type, name, declaration position, optional initialization value
     super(parent, name)
-    @expected = {}  # states and substates that will be jumped to
-    @implemented = {}
-    @locals = {}
-    @eof_handler = nil
-    @has_states = false
+    @expected          = {}  # states and substates that will be jumped to
+    @implemented       = {}
+    @locals            = {}
+    @eof_handler       = nil
+    @has_states        = false
     @needs_generic_eof = false
-    @warnings = true
-    @ftype = inner ? register_return_type(return_type) : return_type
+    @warnings          = true
+    @ftype             = inner ? register_return_type(return_type) : return_type
   end
 
   def register_return_type(rt)
@@ -419,10 +432,6 @@ class GMFunction < GMGenericChild
     base_type = gm.type_map(rt)
     register_local(base_type, 'self_res', gm.allocator(rt))
     return "static inline #{base_type}"
-    #if rt == 'STRING'; base_type = 'GmString'
-    #elsif rt =~ /^[A-Z]+[a-z]+[a-zA-Z]*$/ ; base_type = gm.type_name(rt) end
-    #register_local(base_type +' *', 'self_res', gm.allocator(base_type))
-    #return "static inline #{base_type} *"
   end
 
   def register_local(ltype, lname, linitval=nil)
