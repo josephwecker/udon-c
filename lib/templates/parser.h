@@ -29,7 +29,6 @@ void  {{parser}}_free(void *ptr, size_t size);
 extern int {{parser}}_global_error;
 extern char {{parser}}_global_error_msg[128];
 
-
 /* TODO:
  *  - Linked Lists if needed
  *  - Hash tables if needed
@@ -38,6 +37,14 @@ extern char {{parser}}_global_error_msg[128];
  *  - Public prototypes
  *
  */
+
+{% for e in enums %}
+{{e}}
+
+{% endfor %}{% for s in structs %}
+{{s}}
+
+{% endfor %}
 
 
 #ifdef __cplusplus

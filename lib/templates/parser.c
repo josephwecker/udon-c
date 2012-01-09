@@ -2,4 +2,7 @@
 
 int {{parser}}_global_error = {{parser|up}}_OK;
 
-{{gm}}
+{% for f in functions %}
+{{f}}
+
+{% endfor %}

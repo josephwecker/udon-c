@@ -130,15 +130,8 @@ class GM
   def function_name(n)  '_' + @name.downcase+'_' + n  end
   def real_fname(n)     n.split('_')[2..-1].join('_') end
 
-  def to_str()
-    '<implementing different interface>' # TODO: remove when templates etc. updated
-  end
-
-
-  def output_functions()
-    # Also attaches reorganized functions here since we're sure parsing is done.
-    # TODO: do reorganizing lazily separately so you can emit prototypes first
-    # etc. if desired.
+  def ensure_all_entrypoints
+    return if @ep_ensured
     fnames = @body.select{|b| b.is_a? GMFunction}.reduce({}){|acc, b| acc[b.name] = b; acc}
     @epoints.each do |expect|
       if fnames[expect[:function]].nil?
@@ -152,18 +145,23 @@ class GM
         @body << f.copy_from(expect[:state])
       end
     end
+    @ep_ensured = true
+  end
+
+  def output_functions()
+    ensure_all_entrypoints
     @body.map{|b| b.to_str}
   end
 
-  def output_enums()   @enums.map{|e| e.to_str} end
-  def output_structs() @structs.map{|s| s.to_str} end
+  def output_enums()     @enums.map  {|e| e.to_str} end
+  def output_structs()   @structs.map{|s| s.to_str} end
 
   def output_private_prototypes()
-
+    ensure_all_entrypoints
   end
 
   def output_public_prototypes()
-
+    ensure_all_entrypoints
   end
 end
 
@@ -740,8 +738,10 @@ templates = ['parser.c', 'parser_private.h', 'parser.h']
 templates.map!{|t| [t, Liquid::Template.parse(IO.read($d+t))]}
 
 context = {
-  'gm' => gm,
-  'parser' => gm.name
+  'functions' => gm.output_functions,
+  'enums'     => gm.output_enums,
+  'structs'   => gm.output_structs,
+  'parser'    => gm.name
 }
 
 
