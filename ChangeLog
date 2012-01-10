@@ -1,3 +1,81 @@
+[2012-01-09 | ab27719 | <joseph.wecker@gmail.com>]  Close enough now that I can start trying to compile.
+
+[2012-01-09 | 9fedd69 | <jwecker@justin.tv>]  Starting to implement fast hash table for attributes etc.
+
+[2012-01-09 | 55c3c6d | <jwecker@justin.tv>]  Move templates into the script and planning on avoiding a private header.
+
+[2012-01-09 | 8cb81e4 | <jwecker@justin.tv>]  Basic allocator functions generated
+
+[2012-01-09 | 80be18c | <jwecker@justin.tv>]  automatic tail pointer for lists and stuff descended from lists
+
+[2012-01-09 | 4f678c7 | <jwecker@justin.tv>]  Some builtin structs generated. (not the support code for dict yet)
+
+[2012-01-09 | 2d88125 | <jwecker@justin.tv>]  nop styling
+
+[2012-01-09 | 0e681ec | <jwecker@justin.tv>]  Get generation working again but a little more flexible.
+
+[2012-01-09 | 4d31945 | <joseph.wecker@gmail.com>]  minor cleanup
+
+[2012-01-09 | 2f956df | <joseph.wecker@gmail.com>]  A bit of cleanup and changing the interface to rely on the templates more
+
+[2012-01-09 | bbde524 | <joseph.wecker@gmail.com>]  Generating user-defined structs and enums. Better type mapping.
+
+[2012-01-07 | 823af1c | <joseph.wecker@gmail.com>]  Starting to generate enums and structs
+
+[2012-01-07 | 9724946 | <joseph.wecker@gmail.com>]  Generate reorganized functions for alternate entry-points
+
+[2012-01-07 | 9f9ddd0 | <joseph.wecker@gmail.com>]  Warnings being correctly output
+
+[2012-01-07 | 3f3f1e1 | <joseph.wecker@gmail.com>]  EOF handling more or less done
+
+[2012-01-06 | e74b065 | <jwecker@justin.tv>]  More EOF work, almost there.
+
+[2012-01-06 | c92cb99 | <jwecker@justin.tv>]  Starting to do correct eof handling, after much consideration.
+
+[2012-01-06 | a35c391 | <jwecker@justin.tv>]  Fixed several formatting annoyances
+
+[2012-01-06 | a00d7c5 | <jwecker@justin.tv>]  to_str instead of emit so that it can be inserted into templates etc.
+
+[2012-01-06 | de18391 | <joseph.wecker@gmail.com>]  (don't run)-  starting to convert over to to_str for templates
+
+[2012-01-06 | 5f4490d | <joseph.wecker@gmail.com>]  Starting to generate output files.
+
+[2012-01-05 | 70ab432 | <joseph.wecker@gmail.com>]  Setting up for actual parser source file generation and general cleanup
+
+[2012-01-05 | 84aa99a | <jwecker@justin.tv>]  refresh todo notes
+
+[2012-01-05 | afef7e2 | <jwecker@justin.tv>]  All basic commands processed everywhere where appropriate. Which means the bulk of the actual parsing code is now generated correctly.
+
+[2012-01-05 | f408721 | <jwecker@justin.tv>]  restore initial level for nested labels
+
+[2012-01-05 | 23706a3 | <jwecker@justin.tv>]  Basic cases working and even not-yet-implemented states / substates.
+
+[2012-01-05 | fc1c409 | <jwecker@justin.tv>]  Separate out newline so that column/line incrementing works correctly
+
+[2012-01-05 | bc97503 | <joseph.wecker@gmail.com>]  Starting on cases
+
+[2012-01-05 | d2c189d | <joseph.wecker@gmail.com>]  More or less aggregating local definitions and emitting them properly.
+
+[2012-01-05 | acbe427 | <joseph.wecker@gmail.com>]  Imply self with MARK and MARK_END unless otherwise specified
+
+[2012-01-04 | a22638d | <jwecker@justin.tv>]  Some cleanup and trying to do variable typing & initializing at the right places.
+
+[2012-01-04 | ce9afb8 | <joseph.wecker@gmail.com>]  Abstracted out child propagation stuff and working on correct local variable initialization / tracking.
+
+[2012-01-04 | 7404137 | <joseph.wecker@gmail.com>]  Remove unnecessary switch statements and add explicit return types
+
+[2012-01-03 | 5a5fd0d | <jwecker@justin.tv>]  Iterating on this now that I've tried it: new genmachine parser with more classes. Starting to get commands correctly parsed and (theoretically) has a way to propagate info correctly.
+
+[2012-01-03 | 3dfb63c | <joseph.wecker@gmail.com>]  Parsing state definitions, starting to emit various things. Getting close to useful.
+
+[2012-01-02 | db216e0 | <joseph.wecker@gmail.com>]  Reversed so that the parser has more control of when it consumes parts, and continued fleshing out this very ghetto parser-generator.
+
+[2012-01-02 | 0419bf0 | <joseph.wecker@gmail.com>]  Separate newline + space "advances" to make genmachine easier to code, and add a parser name which defines the prefix etc.
+
+[2011-12-27 | 49ce4bf | <jwecker@justin.tv>]  The quick genmachine template thingy. Now that I kind of know what I'm doing with this.
+
+[2011-12-27 | cb87c70 | <jwecker@justin.tv>]  Starting to bring this up to speed
+
 [2011-12-27 | b19d03e | <joseph.wecker@gmail.com>]  Rough first draft of the children part of the state machine implementation.
 
 [2011-12-27 | b27df6b | <joseph.wecker@gmail.com>]  Propagate filled structs instead of error codes and use longjmp for errors. Linked list appending fixed.
