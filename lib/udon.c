@@ -229,11 +229,14 @@ static inline UdonFullNode * _udon_node(UdonParseState *p) {
                 case '\n':  /*-- child.nl ------*/
                     if(!inl) {
                         {
-                            if(self_res->_children__tail == NULL) {
-                                self_res->children = self_res->_children__tail = (UdonGmList *)(_udon_node(p));
+                            UdonGmList * _item  = (UdonGmList *)(_udon_node(p));
+                            UdonGmList * *_acc_head = (UdonGmList **) &(self_res->children);
+                            UdonGmList * *_acc_tail = (UdonGmList **) &(self_res->_children__tail);
+                            if(*_acc_tail == NULL) {
+                                *_acc_head = *_acc_tail = _item;
                             } else {
-                                (UdonGmList *)(self_res->_children__tail->next) = (UdonGmList *)(_udon_node(p));
-                                self_res->_children__tail = self_res->_children__tail->next;
+                                (*_acc_tail)->next = _item;
+                                *_acc_tail = _item;
                             }
                         }
                     }
@@ -329,11 +332,14 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
                 case '\n':  /*-- child.nl ------*/
                     if(!inl) {
                         {
-                            if(self_res->_children__tail == NULL) {
-                                self_res->children = self_res->_children__tail = (UdonGmList *)(_udon_node(p));
+                            UdonGmList * _item  = (UdonGmList *)(_udon_node(p));
+                            UdonGmList * *_acc_head = (UdonGmList **) &(self_res->children);
+                            UdonGmList * *_acc_tail = (UdonGmList **) &(self_res->_children__tail);
+                            if(*_acc_tail == NULL) {
+                                *_acc_head = *_acc_tail = _item;
                             } else {
-                                (UdonGmList *)(self_res->_children__tail->next) = (UdonGmList *)(_udon_node(p));
-                                self_res->_children__tail = self_res->_children__tail->next;
+                                (*_acc_tail)->next = _item;
+                                *_acc_tail = _item;
                             }
                         }
                     }

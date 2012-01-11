@@ -1,3 +1,13 @@
+[2012-01-11 | 39a0ee8 | <joseph.wecker@gmail.com>]  Continuing work on linked-list accumulation. Just some final typecasting left I believe.
+
+[2012-01-11 | 236a8f1 | <joseph.wecker@gmail.com>]  Basic linked list accumulation for anon type
+
+[2012-01-10 | 7a9f34d | <joseph.wecker@gmail.com>]  Better struct member referencing + some notes. Read now to finish basic macro implementations.
+
+[2012-01-10 | f7d67c7 | <joseph.wecker@gmail.com>]  Several fixes getting this to compile correctly. Now need to define more of the macros.
+
+[2012-01-09 | 6babe4f | <joseph.wecker@gmail.com>]  Update some sources & history
+
 [2012-01-09 | ab27719 | <joseph.wecker@gmail.com>]  Close enough now that I can start trying to compile.
 
 [2012-01-09 | 9fedd69 | <jwecker@justin.tv>]  Starting to implement fast hash table for attributes etc.

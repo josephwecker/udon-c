@@ -398,19 +398,20 @@ class GMCommand < GMGenericChild
           "    }",
           '}']
       elsif @operator == '<<'
-        lt = "#{gm.name.capitalize}GmList *"
-        rs = "(#{lt})(#{outv(@rside)})"
         lsmain, lsmember = outv(@lside).split('->')
         tail = "#{lsmain}->_#{lsmember}__tail"
+        ltype = gm.type_map('LIST')
         @fullcmd = ['{',
-          "    if(#{tail} == NULL) {",
-          "        #{outv(@lside)} = #{tail} = #{rs};",
+          "    #{ltype} _item  = (#{ltype})(#{outv(@rside)});",
+          "    #{ltype} *_acc_head = (#{ltype}*) &(#{outv(@lside)});",
+          "    #{ltype} *_acc_tail = (#{ltype}*) &(#{tail});",
+          "    if(*_acc_tail == NULL) {",
+          "        *_acc_head = *_acc_tail = _item;",
           "    } else {",
-          "        (#{lt})(#{tail}->next) = #{rs};",
-          "        #{tail} = #{tail}->next;",
+          "        (*_acc_tail)->next = _item;",
+          "        *_acc_tail = _item;",
           "    }",
           '}']
-
       end
     else
       @cmd = parse_side(cmd)
