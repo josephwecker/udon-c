@@ -521,6 +521,7 @@ class GMFunction < GMGenericChild
     initial, rest = split_array(@body){|b| b.is_a?(GMState)}
     pre_start, rest = split_array(rest){|b| b.name == start_state}
     f.body = initial + rest + pre_start
+    f.body.map!{|b| b = b.dup; b.parent = f; b}
     return f
   end
 
