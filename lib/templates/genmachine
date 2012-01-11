@@ -4,14 +4,20 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * Accumulation operator macros etc.
-#   * Dots to arrow for struct member referencing.
 #   * Better separation and organization of private/public header stuff
 #     (prototypes, structs, etc.)
-#   * Much better genmachine abstraction for addressing members of a parent
-#     struct.
+#   * ..._new_parser_from_file implementation
+#   * _..._MEM_ERR implementation
+#   * _..._ADVANCE_LINE implementation
+#   * _..._ADVANCE_COL implementation
+#   * _..._ERR implementation
+#   * ..._reset_parser implementation
+#   * ..._free_parser implementation
+#   * Fix up error functions, how they are exposed, and re-enable in 2xml etc.
 #
 #   (Extra credit)
+#   * Much better genmachine abstraction for addressing members of a parent
+#     struct.
 #   * Set source and column in result value when applicable in allocators
 #   * Sprinkle generated code with comments that are the original source
 #   * Make sure eof check always happens on initial state
