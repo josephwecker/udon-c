@@ -1,3 +1,5 @@
+[2012-01-11 | 5d38940 | <jwecker@justin.tv>]  List appending for inherited types compiling (but untested of course)
+
 [2012-01-11 | 39a0ee8 | <joseph.wecker@gmail.com>]  Continuing work on linked-list accumulation. Just some final typecasting left I believe.
 
 [2012-01-11 | 236a8f1 | <joseph.wecker@gmail.com>]  Basic linked list accumulation for anon type

@@ -419,6 +419,8 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
         _UDON_ERR("Parser for 'attribute' in 'node__s_child_shortcut' not yet implemented.");
     s_child__node:
         _UDON_ERR("Parser for 'child' in 'node__s_child_shortcut' (substate 'node') not yet implemented.");
+    _eof:
+        return self_res;
 }
 
 
