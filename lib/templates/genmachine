@@ -352,6 +352,7 @@ class GMCommand < GMGenericChild
     @operator = nil
     @lside    = nil
     @rside    = nil
+    @fullcmd  = nil
     if cmd.start_with? '/'; @cmd = gm.parse_location(cmd)[1]
     elsif cmd == '->'
       @operator = :advance
@@ -381,6 +382,21 @@ class GMCommand < GMGenericChild
             end
           end
         end
+      elsif @operator == '<<<'
+        # Assumes variable being appended to is a struct->member !
+        lsmain, lsmember = outv(@lside).split('->')
+        tail = lsmain + '->_' + lsmember + '__tail'
+        @fullcmd = ['{',
+          "    #{gm.name.capitalize}GmList *_item = #{gm.allocator('LIST')};",
+          "    _item->v = (void *)#{outv(@rside)};",
+          "    _item->next = NULL;",
+          "    if(#{tail} == NULL) {",
+          "        #{outv(@lside)} = #{tail} = _item;",
+          "    } else {",
+          "        #{tail}->next = _item;",
+          "        #{tail} = _item;",
+          "    }",
+          '}']
       end
     else
       @cmd = parse_side(cmd)
@@ -405,6 +421,8 @@ class GMCommand < GMGenericChild
       if @cmd then return outv(@cmd)
       elsif @operator == '=' then return '('+outv(@lside)+@operator+outv(@rside)+')'
       else return (outv(@lside) || '')+(@operator || '')+(outv(@rside) || '') end
+    elsif @fullcmd
+      return @fullcmd.map{|line| dent(ind)+line+"\n"}
     else
       if @cmd then return dent(ind)+outv(@cmd)+";\n"
       elsif @operator == :advance
@@ -793,7 +811,6 @@ templates = [
 
 
 #define _{{parser|up}}_EOF p->curr == p->end
-
 
 int {{parser}}_global_error = {{parser|up}}_OK;
 {% if use_gmdict %}

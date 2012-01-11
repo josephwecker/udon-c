@@ -162,6 +162,7 @@ static inline UdonGmString * _udon_label__s_delim(UdonParseState *p);
 static inline void * _udon_id(UdonParseState *p);
 static inline void * _udon_comment(UdonParseState *p);
 static inline UdonFullNode * _new_udon_full_node(UdonParseState *p);
+static inline UdonGmList * _new_udon_gm_list(UdonParseState *p);
 static inline UdonGmString * _new_udon_gm_string(UdonParseState *p);
 
 #ifdef __cplusplus

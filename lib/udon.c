@@ -10,7 +10,6 @@
 
 #define _UDON_EOF p->curr == p->end
 
-
 int udon_global_error = UDON_OK;
 
 /* TODO:
@@ -200,7 +199,17 @@ static inline UdonFullNode * _udon_node(UdonParseState *p) {
                 case '.':   /*-- identity.class */
                   s_identity__class:
                     _UDON_ADVANCE_COL();
-                    self_res->classes << _udon_label(p);
+                    {
+                        UdonGmList *_item = _new_udon_gm_list(p);
+                        _item->v = (void *)_udon_label(p);
+                        _item->next = NULL;
+                        if(self_res->_classes__tail == NULL) {
+                            self_res->classes = self_res->_classes__tail = _item;
+                        } else {
+                            self_res->_classes__tail->next = _item;
+                            self_res->_classes__tail = _item;
+                        }
+                    }
                     goto s_identity;
                 default:    /*-- identity.child */   goto _inner_s_child;
             }
@@ -365,7 +374,17 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
                 case '.':   /*-- identity.class */
                   s_identity__class:
                     _UDON_ADVANCE_COL();
-                    self_res->classes << _udon_label(p);
+                    {
+                        UdonGmList *_item = _new_udon_gm_list(p);
+                        _item->v = (void *)_udon_label(p);
+                        _item->next = NULL;
+                        if(self_res->_classes__tail == NULL) {
+                            self_res->classes = self_res->_classes__tail = _item;
+                        } else {
+                            self_res->_classes__tail->next = _item;
+                            self_res->_classes__tail = _item;
+                        }
+                    }
                     goto s_identity;
                 default:    /*-- identity.child */   goto _inner_s_child;
             }
@@ -447,6 +466,13 @@ static inline void * _udon_comment(UdonParseState *p) {
 static inline UdonFullNode * _new_udon_full_node(UdonParseState *p) {
     UdonFullNode * res           = (UdonFullNode *)udon_malloc(sizeof(UdonFullNode));
     if(!res) _UDON_MEM_ERR("Memory allocation failed for FullNode.");
+    return res;
+}
+
+
+static inline UdonGmList * _new_udon_gm_list(UdonParseState *p) {
+    UdonGmList * res             = (UdonGmList *)udon_malloc(sizeof(UdonGmList));
+    if(!res) _UDON_MEM_ERR("Memory allocation failed for LIST.");
     return res;
 }
 

@@ -32,7 +32,7 @@
   |state[:identity]
     |c[ \t]   |.lead      | ->                                     |>>
     |c[<LBR>] |.id        | S.id=/id                               |>>
-    |c[.]     |.class     | ->| S.classes<</label                  |>>
+    |c[.]     |.class     | ->| S.classes <<< /label               |>>
     |default  |.child     |                                        |>> :child
   |state[:child-shortcut] | ((UdonNode *)S).node_type=ROOT                       |>> :child
   |state[:child]
