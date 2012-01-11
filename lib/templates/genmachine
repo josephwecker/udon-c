@@ -70,7 +70,7 @@ class GM
         f = GMFunction.new(self, "#{@name}_parse", 'int')
         f.body << GMCommand.new(f, "int errval = setjmp(p->err_jmpbuf)")
         f.body << GMCommand.new(f, "if(errval) return errval")
-        f.body << GMCommand.new(f, "p->result = #{parse_location(c[2])[1]}")
+        f.body << GMCommand.new(f, "p->result = (void *)#{parse_location(c[2])[1]}")
         f.body << GMCommand.new(f, "return 0")
         @body << f
         c = yield
@@ -115,7 +115,7 @@ class GM
   def allocator(for_type)
     fname = '_new_' + type_map(for_type, false).to_camel
     @allocators[for_type] = fname
-    return fname + '()'
+    return fname + '(p)'
   end
 
   def type_map(t, inc_pointer=true)
@@ -192,10 +192,11 @@ class GM
 
   def output_private_prototypes()
     ensure_secondary
+    @body.map{|b| b.to_proto_str if b.is_a?(GMFunction)}.compact
   end
 
   def output_public_prototypes()
-    ensure_all_entrypoints
+    ensure_secondary
   end
 end
 
@@ -512,6 +513,10 @@ class GMFunction < GMGenericChild
     end
   end
 
+  def to_proto_str(ind=0)
+    res = dent(ind)+"#{@ftype} #{@name}(#{gm.name.capitalize}ParseState *p);"
+  end
+
   def to_str(ind=0)
     res = dent(ind)+"#{@ftype} #{@name}(#{gm.name.capitalize}ParseState *p) {\n"
     ind = 1
@@ -782,6 +787,8 @@ templates = [
 #include <stdlib.h>
 {% if use_gmdict %}#include <string.h>{% endif %}
 
+
+
 int {{parser}}_global_error = {{parser|up}}_OK;
 {% if use_gmdict %}
 /* TODO:
@@ -795,36 +802,36 @@ static inline int is_prime(unsigned int n) {
     return n % div != 0;
 }
 
-static inline int gm_string_eq(GMString *a, GMString *b) {
+static inline int gm_string_eq({{parser|cap}}GmString *a, {{parser|cap}}GmString *b) {
     if(a==NULL || b==NULL) return 0;
-    if(a->size != b->size) return 0;
-    return (memcmp(a->start, b->start, a->size) == 0);
+    if(a->length != b->length) return 0;
+    return (memcmp(a->start, b->start, a->length) == 0);
 }
 
-GmDict *gm_dict_create_standard(void) {
-    GmDict *gmd = malloc(sizeof(GmDict));
+{{parser|cap}}GmDict *gm_dict_create_standard(void) {
+    {{parser|cap}}GmDict *gmd = malloc(sizeof({{parser|cap}}GmDict));
     if(!gmd) return NULL; /* TODO: longjump to error */
     gmd->size = 19;
     gmd->filled = 0;
-    gmd->table = (GmEntry *) calloc(gmd->size + 1, sizeof(GmEntry));
+    gmd->table = ({{parser|cap}}GmEntry *) calloc(gmd->size + 1, sizeof({{parser|cap}}GmEntry));
     if(!gmd->table) return NULL; /* TODO: err */
     return gmd;
 }
 
-GmDict *gm_dict_create(size_t s) {
-    GmDict *gmd = malloc(sizeof(GmDict));
+{{parser|cap}}GmDict *gm_dict_create(size_t s) {
+    {{parser|cap}}GmDict *gmd = malloc(sizeof({{parser|cap}}GmDict));
     if(!gmd) return NULL; /* TODO: longjump to error */
     if(s < 3) s = 3;
     s |= 1; /* ensure odd */
     while(!is_prime(s)) s += 2;
     gmd->size = s;
     gmd->filled = 0;
-    gmd->table = (GmEntry *) calloc(gmd->size + 1, sizeof(GmEntry));
+    gmd->table = ({{parser|cap}}GmEntry *) calloc(gmd->size + 1, sizeof({{parser|cap}}GmEntry));
     if(!gmd->table) return NULL; /* TODO: err */
     return gmd;
 }
 
-void gm_dict_destroy(GmDict *gmd) {
+void gm_dict_destroy({{parser|cap}}GmDict *gmd) {
     if(gmd == NULL) return;
     if(gmd->table == NULL) return;
     free(gmd->table);
@@ -834,7 +841,7 @@ void gm_dict_destroy(GmDict *gmd) {
 /* Returns a pointer to the old value */
 /* Right now doesn't replace key w/ pointer to textually identical one. Change
  * if for some reason later we need to clean up the old key or something... */
-void * gm_dict_add_or_update(GmDict *gmd, GmString *key, void *new_value) {
+void * gm_dict_add_or_update({{parser|cap}}GmDict *gmd, {{parser|cap}}GmString *key, void *new_value) {
     uint64_t idx;
     uint64_t hval = key->length;
     uint64_t count = hval;
@@ -855,15 +862,15 @@ void * gm_dict_add_or_update(GmDict *gmd, GmString *key, void *new_value) {
         uint64_t hval2 = 1 + hval % (gmd->size - 2);
         uint64_t first_idx = idx;
         do {
-            if(idx <= hval2) idx = gdm->size + idx - hval2;
+            if(idx <= hval2) idx = gmd->size + idx - hval2;
             else idx -= hval2;
             if(idx == first_idx) break;
-            if(gmd->table[idx].used == hval && gm_string_eq(key, gmd->table[idx].key)) {
+            if(gmd->table[idx]._used == hval && gm_string_eq(key, gmd->table[idx].key)) {
                 retval = gmd->table[idx].value;
                 gmd->table[idx].value = new_value;
                 return retval;
             }
-        } while(gmd->table[idx].used);
+        } while(gmd->table[idx]._used);
     }
 
     /* Not found */
@@ -878,7 +885,7 @@ void * gm_dict_add_or_update(GmDict *gmd, GmString *key, void *new_value) {
     return NULL;
 }
 
-void * gm_dict_value_for(GmDict *gmd, GmString *key) {
+void * gm_dict_value_for({{parser|cap}}GmDict *gmd, {{parser|cap}}GmString *key) {
     uint64_t idx;
     uint64_t hval = key->length;
     uint64_t count = hval;
@@ -898,13 +905,13 @@ void * gm_dict_value_for(GmDict *gmd, GmString *key) {
         uint64_t first_idx = idx;
         do {
             /* Steps through all available indices because size is prime */
-            if(idx <= hval2) idx = gdm->size + idx - hval2;
+            if(idx <= hval2) idx = gmd->size + idx - hval2;
             else idx -= hval2;
             if(idx == first_idx) return NULL;
-            if(gmd->table[idx].used == hval && gm_string_eq(key, gmd->table[idx].key)) {
+            if(gmd->table[idx]._used == hval && gm_string_eq(key, gmd->table[idx].key)) {
                 return gmd->table[idx].value;
             }
-        } while(gmd->table[idx].used);
+        } while(gmd->table[idx]._used);
     }
     return NULL;
 }
@@ -922,9 +929,13 @@ END_OF_PARSER_C
 /*---- {{parser}} parser header/api - automatically generated by genmachine ----*/
 #ifndef __{{parser|up}}_H__
 #define __{{parser|up}}_H__ 1
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
+#include <stdint.h>
+#include <stddef.h>
+#include <setjmp.h>
+
 
 /* --- Allow setting different malloc/free routines --- */
 #ifdef _{{parser|up}}_NONSTANDARD_MEMORY
@@ -950,32 +961,6 @@ void  {{parser}}_free(void *ptr, size_t size);
 extern int {{parser}}_global_error;
 extern char {{parser}}_global_error_msg[128];
 
-/* --- For hash tables --- */
-{% if use_gmdict %}
-struct GmEntry {
-    char *key;
-    void *value;
-    unsigned int _used;
-};
-typedef struct GmEntry GmEntry;
-
-struct GmDict {
-    GmEntry *table;
-    uint64_t size;
-    unsigned int filled;
-};
-typedef struct GmDict GmDict;
-{% endif %}
-
-/* TODO:
- *  - Linked Lists if needed
- *  - Hash tables if needed
- *  - Strings if needed (can't imagine them not being needed)
- *  - Types / enums as per the source
- *  - Public prototypes
- *
- */
-
 {% if use_gmstring %}
 struct {{parser|cap}}GmString {
     char *                       start;
@@ -990,7 +975,33 @@ struct {{parser|cap}}GmList {
 };
 typedef struct {{parser|cap}}GmList        {{parser|cap}}GmList;
 {% endif %}
+/* --- For hash tables --- */
 {% if use_gmdict %}
+struct {{parser|cap}}GmEntry {
+    {{parser|cap}}GmString *key;
+    void *value;
+    unsigned int _used;
+};
+typedef struct {{parser|cap}}GmEntry {{parser|cap}}GmEntry;
+
+struct {{parser|cap}}GmDict {
+    {{parser|cap}}GmEntry *table;
+    uint64_t size;
+    unsigned int filled;
+};
+typedef struct {{parser|cap}}GmDict {{parser|cap}}GmDict;
+{% endif %}
+
+/* TODO:
+ *  - Linked Lists if needed
+ *  - Hash tables if needed
+ *  - Strings if needed (can't imagine them not being needed)
+ *  - Types / enums as per the source
+ *  - Public prototypes
+ *
+ */
+
+/*{% if use_gmdict %}
 struct {{parser|cap}}GmDict {
     {{parser|cap}}GmList                   keys;
     {{parser|cap}}GmList                   _keys__tail;
@@ -999,7 +1010,7 @@ struct {{parser|cap}}GmDict {
     uint64_t                     allocated;
 };
 typedef struct {{parser|cap}}GmDict        {{parser|cap}}GmDict;
-{% endif %}
+{% endif %}*/
 
 {% for e in enums %}
 {{e}}
@@ -1009,6 +1020,39 @@ typedef struct {{parser|cap}}GmDict        {{parser|cap}}GmDict;
 
 {% endfor %}
 
+/* TODO: move opaque parts into their own struct in the c file with this as a
+ *       member
+ */
+struct {{parser|cap}}ParseState {
+    // --- Set these ---
+    char             *buffer;
+    size_t           size;
+    char             *filename;  // optional, of course
+    jmp_buf          err_jmpbuf; // Use setjmp(...)
+
+    // --- Result State ---
+    void             *result;
+    unsigned int     error_code;
+    char             error_message[256];
+    {{parser|cap}}GmList         warnings;
+
+    // --- Current State ---
+    unsigned int     state;
+    uint64_t         line;
+    uint64_t         column;
+
+    // --- Generally Opaque ---
+    char             *curr;
+    uint64_t         *qcurr;
+    char             *end;
+    uint64_t         *qend;
+    size_t           qsize;  // Automatically calculated, for quickscans.
+    char             *alpha; // Used for accumulating
+};
+typedef struct {{parser|cap}}ParseState {{parser|cap}}ParseState;
+
+{% for p in priv_protos %}
+{{p}}{% endfor %}
 
 #ifdef __cplusplus
 }
@@ -1024,6 +1068,7 @@ context = {
   'functions'    => gm.output_functions,
   'enums'        => gm.output_enums,
   'structs'      => gm.output_structs,
+  'priv_protos'  => gm.output_private_prototypes,
   'use_gmstring' => gm.use_gmstring,
   'use_gmlist'   => gm.use_gmlist,
   'use_gmdict'   => gm.use_gmdict,

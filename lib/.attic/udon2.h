@@ -143,7 +143,6 @@ extern "C" {
         uint64_t         column;
 
         // --- Generally Opaque ---
-        //void             *local_result;
         char             *curr;
         uint64_t         *qcurr;
         char             *end;

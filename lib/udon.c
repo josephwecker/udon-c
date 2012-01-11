@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+
 int udon_global_error = UDON_OK;
 
 /* TODO:
@@ -20,36 +22,36 @@ static inline int is_prime(unsigned int n) {
     return n % div != 0;
 }
 
-static inline int gm_string_eq(GMString *a, GMString *b) {
+static inline int gm_string_eq(UdonGmString *a, UdonGmString *b) {
     if(a==NULL || b==NULL) return 0;
-    if(a->size != b->size) return 0;
-    return (memcmp(a->start, b->start, a->size) == 0);
+    if(a->length != b->length) return 0;
+    return (memcmp(a->start, b->start, a->length) == 0);
 }
 
-GmDict *gm_dict_create_standard(void) {
-    GmDict *gmd = malloc(sizeof(GmDict));
+UdonGmDict *gm_dict_create_standard(void) {
+    UdonGmDict *gmd = malloc(sizeof(UdonGmDict));
     if(!gmd) return NULL; /* TODO: longjump to error */
     gmd->size = 19;
     gmd->filled = 0;
-    gmd->table = (GmEntry *) calloc(gmd->size + 1, sizeof(GmEntry));
+    gmd->table = (UdonGmEntry *) calloc(gmd->size + 1, sizeof(UdonGmEntry));
     if(!gmd->table) return NULL; /* TODO: err */
     return gmd;
 }
 
-GmDict *gm_dict_create(size_t s) {
-    GmDict *gmd = malloc(sizeof(GmDict));
+UdonGmDict *gm_dict_create(size_t s) {
+    UdonGmDict *gmd = malloc(sizeof(UdonGmDict));
     if(!gmd) return NULL; /* TODO: longjump to error */
     if(s < 3) s = 3;
     s |= 1; /* ensure odd */
     while(!is_prime(s)) s += 2;
     gmd->size = s;
     gmd->filled = 0;
-    gmd->table = (GmEntry *) calloc(gmd->size + 1, sizeof(GmEntry));
+    gmd->table = (UdonGmEntry *) calloc(gmd->size + 1, sizeof(UdonGmEntry));
     if(!gmd->table) return NULL; /* TODO: err */
     return gmd;
 }
 
-void gm_dict_destroy(GmDict *gmd) {
+void gm_dict_destroy(UdonGmDict *gmd) {
     if(gmd == NULL) return;
     if(gmd->table == NULL) return;
     free(gmd->table);
@@ -59,7 +61,7 @@ void gm_dict_destroy(GmDict *gmd) {
 /* Returns a pointer to the old value */
 /* Right now doesn't replace key w/ pointer to textually identical one. Change
  * if for some reason later we need to clean up the old key or something... */
-void * gm_dict_add_or_update(GmDict *gmd, GmString *key, void *new_value) {
+void * gm_dict_add_or_update(UdonGmDict *gmd, UdonGmString *key, void *new_value) {
     uint64_t idx;
     uint64_t hval = key->length;
     uint64_t count = hval;
@@ -80,15 +82,15 @@ void * gm_dict_add_or_update(GmDict *gmd, GmString *key, void *new_value) {
         uint64_t hval2 = 1 + hval % (gmd->size - 2);
         uint64_t first_idx = idx;
         do {
-            if(idx <= hval2) idx = gdm->size + idx - hval2;
+            if(idx <= hval2) idx = gmd->size + idx - hval2;
             else idx -= hval2;
             if(idx == first_idx) break;
-            if(gmd->table[idx].used == hval && gm_string_eq(key, gmd->table[idx].key)) {
+            if(gmd->table[idx]._used == hval && gm_string_eq(key, gmd->table[idx].key)) {
                 retval = gmd->table[idx].value;
                 gmd->table[idx].value = new_value;
                 return retval;
             }
-        } while(gmd->table[idx].used);
+        } while(gmd->table[idx]._used);
     }
 
     /* Not found */
@@ -103,7 +105,7 @@ void * gm_dict_add_or_update(GmDict *gmd, GmString *key, void *new_value) {
     return NULL;
 }
 
-void * gm_dict_value_for(GmDict *gmd, GmString *key) {
+void * gm_dict_value_for(UdonGmDict *gmd, UdonGmString *key) {
     uint64_t idx;
     uint64_t hval = key->length;
     uint64_t count = hval;
@@ -123,13 +125,13 @@ void * gm_dict_value_for(GmDict *gmd, GmString *key) {
         uint64_t first_idx = idx;
         do {
             /* Steps through all available indices because size is prime */
-            if(idx <= hval2) idx = gdm->size + idx - hval2;
+            if(idx <= hval2) idx = gmd->size + idx - hval2;
             else idx -= hval2;
             if(idx == first_idx) return NULL;
-            if(gmd->table[idx].used == hval && gm_string_eq(key, gmd->table[idx].key)) {
+            if(gmd->table[idx]._used == hval && gm_string_eq(key, gmd->table[idx].key)) {
                 return gmd->table[idx].value;
             }
-        } while(gmd->table[idx].used);
+        } while(gmd->table[idx]._used);
     }
     return NULL;
 }
@@ -139,14 +141,14 @@ void * gm_dict_value_for(GmDict *gmd, GmString *key) {
 int udon_parse(UdonParseState *p) {
     int errval                   = setjmp(p->err_jmpbuf);
     if(errval) return errval;
-    p->result                    = _udon_node__s_child_shortcut(p);
+    p->result                    = (void *)_udon_node__s_child_shortcut(p);
     return 0;
 }
 
 
 static inline UdonFullNode * _udon_node(UdonParseState *p) {
-    UdonFullNode * self_res      = _new_udon_full_node();
-    uint64_t inline              = 1;
+    UdonFullNode * self_res      = _new_udon_full_node(p);
+    uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
     s_init:
@@ -214,8 +216,8 @@ static inline UdonFullNode * _udon_node(UdonParseState *p) {
                     _UDON_ADVANCE_COL();
                     goto s_child;
                 case '\n':  /*-- child.nl ------*/
-                    if(!inline) self_res->children<<UdonNode *;
-                    inline       = 0;
+                    if(!inl) self_res->children<<UdonNode *;
+                    inl          = 0;
                     goto s_child;
                 case '#':   /*-- child.comment -*/
                     _UDON_ADVANCE_COL();
@@ -235,7 +237,7 @@ static inline UdonFullNode * _udon_node(UdonParseState *p) {
 
 
 static inline UdonGmString * _udon_label(UdonParseState *p) {
-    UdonGmString * self_res      = _new_udon_gm_string();
+    UdonGmString * self_res      = _new_udon_gm_string(p);
     uint64_t lvl                 = 0;
     self_res->start              = p->curr;
     s_init:
@@ -288,8 +290,8 @@ static inline UdonGmString * _udon_label(UdonParseState *p) {
 
 
 static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
-    UdonFullNode * self_res      = _new_udon_full_node();
-    uint64_t inline              = 1;
+    UdonFullNode * self_res      = _new_udon_full_node(p);
+    uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
     s_child_shortcut:
@@ -305,8 +307,8 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
                     _UDON_ADVANCE_COL();
                     goto s_child;
                 case '\n':  /*-- child.nl ------*/
-                    if(!inline) self_res->children<<UdonNode *;
-                    inline       = 0;
+                    if(!inl) self_res->children<<UdonNode *;
+                    inl          = 0;
                     goto s_child;
                 case '#':   /*-- child.comment -*/
                     _UDON_ADVANCE_COL();
@@ -376,7 +378,7 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
 
 
 static inline UdonGmString * _udon_label__s_delim(UdonParseState *p) {
-    UdonGmString * self_res      = _new_udon_gm_string();
+    UdonGmString * self_res      = _new_udon_gm_string(p);
     uint64_t lvl                 = 0;
     self_res->start              = p->curr;
     s_delim:
