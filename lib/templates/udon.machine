@@ -19,9 +19,9 @@
 
 |function[node:FullNode]  | inl=1 | ibase=COL | ipar=COL-1
   |state[:init]
-    |eof                  | S.node_type=BLANK                      |return S
-    |c[\n]    |.value1    | -> | S.node_type=VALUE                 |>> :value
-    |c[ \t]   |.value2    | -> | S.node_type=VALUE                 |>> :value
+    |eof                  | ((UdonNode *)S).node_type=BLANK                      |return S
+    |c[\n]    |.value1    | -> | ((UdonNode *)S).node_type=VALUE                 |>> :value
+    |c[ \t]   |.value2    | -> | ((UdonNode *)S).node_type=VALUE                 |>> :value
     |c[:]     |.attr      | ->                                     |>> :attribute
     |c[<LBR>] |.id        |                                        |>> :identity.id
     |c[.]     |.class     |                                        |>> :identity.class
@@ -34,7 +34,7 @@
     |c[<LBR>] |.id        | S.id=/id                               |>>
     |c[.]     |.class     | ->| S.classes<</label                  |>>
     |default  |.child     |                                        |>> :child
-  |state[:child-shortcut] | S.node_type=ROOT                       |>> :child
+  |state[:child-shortcut] | ((UdonNode *)S).node_type=ROOT                       |>> :child
   |state[:child]
     |c[ \t]   |.lead      | ->                                     |>>
     |c[\n]    |.nl        |if[!inl] | C<<Node |endif | inl=0       |>>

@@ -8,6 +8,8 @@
 #include <string.h>
 
 
+#define _UDON_EOF p->curr == p->end
+
 
 int udon_global_error = UDON_OK;
 
@@ -153,19 +155,19 @@ static inline UdonFullNode * _udon_node(UdonParseState *p) {
     uint64_t ipar                = p->column-1;
     s_init:
         if(_UDON_EOF) {
-            self_res.node_type   = UDON_BLANK;
+            ((UdonNode *)self_res)->node_type = UDON_BLANK;
             return self_res;
         } else {
           _inner_s_init:
             switch(*(p->curr)) {
                 case '\n':  /*-- init.value1 ---*/
                     _UDON_ADVANCE_LINE();
-                    self_res.node_type = UDON_VALUE;
+                    ((UdonNode *)self_res)->node_type = UDON_VALUE;
                     goto s_value;
                 case ' ':
                 case '\t':  /*-- init.value2 ---*/
                     _UDON_ADVANCE_COL();
-                    self_res.node_type = UDON_VALUE;
+                    ((UdonNode *)self_res)->node_type = UDON_VALUE;
                     goto s_value;
                 case ':':   /*-- init.attr -----*/
                     _UDON_ADVANCE_COL();
@@ -173,12 +175,12 @@ static inline UdonFullNode * _udon_node(UdonParseState *p) {
                 case '[':   /*-- init.id -------*/   goto s_identity__id;
                 case '.':   /*-- init.class ----*/   goto s_identity__class;
                 case '(':   /*-- init.delim ----*/
-                    self_res.name = _udon_label__s_delim(p);
+                    self_res->name = _udon_label__s_delim(p);
                     goto s_identity;
                 case '|':   /*-- init.child ----*/   goto s_child__node;
                 case '{':   /*-- init.embed ----*/   _UDON_ERR("Embedded nodes are not yet supported");
                 default:    /*-- init.name -----*/
-                    self_res.name = _udon_label(p);
+                    self_res->name = _udon_label(p);
                     goto s_identity;
             }
         }
@@ -193,18 +195,18 @@ static inline UdonFullNode * _udon_node(UdonParseState *p) {
                     goto s_identity;
                 case '[':   /*-- identity.id ---*/
                   s_identity__id:
-                    self_res.id  = _udon_id(p);
+                    self_res->id = _udon_id(p);
                     goto s_identity;
                 case '.':   /*-- identity.class */
                   s_identity__class:
                     _UDON_ADVANCE_COL();
-                    self_res.classes << _udon_label(p);
+                    self_res->classes << _udon_label(p);
                     goto s_identity;
                 default:    /*-- identity.child */   goto _inner_s_child;
             }
         }
     s_child_shortcut:
-        self_res.node_type       = UDON_ROOT;
+        ((UdonNode *)self_res)->node_type = UDON_ROOT;
         goto _inner_s_child;
     s_child:
         if(_UDON_EOF) goto _eof;
@@ -295,7 +297,7 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
     s_child_shortcut:
-        self_res.node_type       = UDON_ROOT;
+        ((UdonNode *)self_res)->node_type = UDON_ROOT;
         goto _inner_s_child;
     s_child:
         if(_UDON_EOF) goto _eof;
@@ -318,19 +320,19 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
         }
     s_init:
         if(_UDON_EOF) {
-            self_res.node_type   = UDON_BLANK;
+            ((UdonNode *)self_res)->node_type = UDON_BLANK;
             return self_res;
         } else {
           _inner_s_init:
             switch(*(p->curr)) {
                 case '\n':  /*-- init.value1 ---*/
                     _UDON_ADVANCE_LINE();
-                    self_res.node_type = UDON_VALUE;
+                    ((UdonNode *)self_res)->node_type = UDON_VALUE;
                     goto s_value;
                 case ' ':
                 case '\t':  /*-- init.value2 ---*/
                     _UDON_ADVANCE_COL();
-                    self_res.node_type = UDON_VALUE;
+                    ((UdonNode *)self_res)->node_type = UDON_VALUE;
                     goto s_value;
                 case ':':   /*-- init.attr -----*/
                     _UDON_ADVANCE_COL();
@@ -338,12 +340,12 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
                 case '[':   /*-- init.id -------*/   goto s_identity__id;
                 case '.':   /*-- init.class ----*/   goto s_identity__class;
                 case '(':   /*-- init.delim ----*/
-                    self_res.name = _udon_label__s_delim(p);
+                    self_res->name = _udon_label__s_delim(p);
                     goto s_identity;
                 case '|':   /*-- init.child ----*/   goto s_child__node;
                 case '{':   /*-- init.embed ----*/   _UDON_ERR("Embedded nodes are not yet supported");
                 default:    /*-- init.name -----*/
-                    self_res.name = _udon_label(p);
+                    self_res->name = _udon_label(p);
                     goto s_identity;
             }
         }
@@ -358,12 +360,12 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
                     goto s_identity;
                 case '[':   /*-- identity.id ---*/
                   s_identity__id:
-                    self_res.id  = _udon_id(p);
+                    self_res->id = _udon_id(p);
                     goto s_identity;
                 case '.':   /*-- identity.class */
                   s_identity__class:
                     _UDON_ADVANCE_COL();
-                    self_res.classes << _udon_label(p);
+                    self_res->classes << _udon_label(p);
                     goto s_identity;
                 default:    /*-- identity.child */   goto _inner_s_child;
             }

@@ -6,6 +6,10 @@
 # TODO:
 #   * Accumulation operator macros etc.
 #   * Dots to arrow for struct member referencing.
+#   * Better separation and organization of private/public header stuff
+#     (prototypes, structs, etc.)
+#   * Much better genmachine abstraction for addressing members of a parent
+#     struct.
 #
 #   (Extra credit)
 #   * Set source and column in result value when applicable in allocators
@@ -441,9 +445,9 @@ class GMCommand < GMGenericChild
   def specials_map(cmd)
     map = [['S',  'self_res'],           ['LINE', 'p->line'],
            ['COL','p->column'],          ['CURR', '*(p->curr)'],
-           ['C',  'self_res->children'], ['α',    'greek_alpha'],
-           ['β',  'greek_beta']]
-    map.reduce(cmd.strip) do |val, mapping|
+           ['C',  'self_res->children'], ['α',   'greek_alpha'],
+           ['β', 'greek_beta']]
+    map.reduce(cmd.strip.gsub(/\.(?!")/,'->')) do |val, mapping|
       from, to = mapping
       val.gsub(/(?<=^|[^a-zA-Z0-9_])#{from}(?=$|[^a-zA-Z0-9_])/u, to)
     end
@@ -787,6 +791,8 @@ templates = [
 #include <stdlib.h>
 {% if use_gmdict %}#include <string.h>{% endif %}
 
+
+#define _{{parser|up}}_EOF p->curr == p->end
 
 
 int {{parser}}_global_error = {{parser|up}}_OK;
