@@ -43,7 +43,7 @@ typedef struct UdonGmString      UdonGmString;
 
 struct UdonGmList {
     void *                       v;
-    struct UdonList *            next;
+    struct UdonGmList *            next;
 };
 typedef struct UdonGmList        UdonGmList;
 

@@ -37,7 +37,7 @@
   |state[:child-shortcut] | ((UdonNode *)S).node_type=ROOT                       |>> :child
   |state[:child]
     |c[ \t]   |.lead      | ->                                     |>>
-    |c[\n]    |.nl        |if[!inl] | C<<Node |endif | inl=0       |>>
+    |c[\n]    |.nl        |if[!inl] | C<</node |endif | inl=0       |>>
     |c[#]     |.comment   | -> | /comment                          |>>
 # TODO: comment does advanced skipping
 

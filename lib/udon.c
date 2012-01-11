@@ -207,7 +207,7 @@ static inline UdonFullNode * _udon_node(UdonParseState *p) {
                             self_res->classes = self_res->_classes__tail = _item;
                         } else {
                             self_res->_classes__tail->next = _item;
-                            self_res->_classes__tail = _item;
+                            self_res->_classes__tail = self_res->_classes__tail->next;
                         }
                     }
                     goto s_identity;
@@ -227,7 +227,16 @@ static inline UdonFullNode * _udon_node(UdonParseState *p) {
                     _UDON_ADVANCE_COL();
                     goto s_child;
                 case '\n':  /*-- child.nl ------*/
-                    if(!inl) self_res->children<<UdonNode *;
+                    if(!inl) {
+                        {
+                            if(self_res->_children__tail == NULL) {
+                                self_res->children = self_res->_children__tail = (UdonGmList *)(_udon_node(p));
+                            } else {
+                                (UdonGmList *)(self_res->_children__tail->next) = (UdonGmList *)(_udon_node(p));
+                                self_res->_children__tail = self_res->_children__tail->next;
+                            }
+                        }
+                    }
                     inl          = 0;
                     goto s_child;
                 case '#':   /*-- child.comment -*/
@@ -318,7 +327,16 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
                     _UDON_ADVANCE_COL();
                     goto s_child;
                 case '\n':  /*-- child.nl ------*/
-                    if(!inl) self_res->children<<UdonNode *;
+                    if(!inl) {
+                        {
+                            if(self_res->_children__tail == NULL) {
+                                self_res->children = self_res->_children__tail = (UdonGmList *)(_udon_node(p));
+                            } else {
+                                (UdonGmList *)(self_res->_children__tail->next) = (UdonGmList *)(_udon_node(p));
+                                self_res->_children__tail = self_res->_children__tail->next;
+                            }
+                        }
+                    }
                     inl          = 0;
                     goto s_child;
                 case '#':   /*-- child.comment -*/
@@ -382,7 +400,7 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p) {
                             self_res->classes = self_res->_classes__tail = _item;
                         } else {
                             self_res->_classes__tail->next = _item;
-                            self_res->_classes__tail = _item;
+                            self_res->_classes__tail = self_res->_classes__tail->next;
                         }
                     }
                     goto s_identity;

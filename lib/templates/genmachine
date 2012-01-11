@@ -394,9 +394,23 @@ class GMCommand < GMGenericChild
           "        #{outv(@lside)} = #{tail} = _item;",
           "    } else {",
           "        #{tail}->next = _item;",
-          "        #{tail} = _item;",
+          "        #{tail} = #{tail}->next;",
           "    }",
           '}']
+      elsif @operator == '<<'
+        lt = "#{gm.name.capitalize}GmList *"
+        rs = "(#{lt})(#{outv(@rside)})"
+        lsmain, lsmember = outv(@lside).split('->')
+        tail = "#{lsmain}->_#{lsmember}__tail"
+        @fullcmd = ['{',
+          "    if(#{tail} == NULL) {",
+          "        #{outv(@lside)} = #{tail} = #{rs};",
+          "    } else {",
+          "        (#{lt})(#{tail}->next) = #{rs};",
+          "        #{tail} = #{tail}->next;",
+          "    }",
+          '}']
+
       end
     else
       @cmd = parse_side(cmd)
@@ -417,12 +431,12 @@ class GMCommand < GMGenericChild
 
   def to_str(ind=1)
     return '' if @ignore
-    if @statement
+    if @fullcmd
+      return @fullcmd.map{|line| dent(ind)+line}.join("\n")+"\n"
+    elsif @statement
       if @cmd then return outv(@cmd)
       elsif @operator == '=' then return '('+outv(@lside)+@operator+outv(@rside)+')'
       else return (outv(@lside) || '')+(@operator || '')+(outv(@rside) || '') end
-    elsif @fullcmd
-      return @fullcmd.map{|line| dent(ind)+line+"\n"}
     else
       if @cmd then return dent(ind)+outv(@cmd)+";\n"
       elsif @operator == :advance
@@ -746,12 +760,12 @@ class GMConditional < GMGenericChild
   def to_str(ind=1)
     first_if = true
     res = ''
-    inline = @conds.all?{|c,b| b.size == 1}
+    inline = @conds.all?{|c,b| b.size == 1 && b[0].to_str.count("\n") < 2}
     sbrac = inline ? '' : "{\n"
     ebrac = inline ? '' : "} "
     @conds.each do |clause, body|
-      if first_if  then res =  dent(ind)+"if(" + clause.to_str(0) + ") #{sbrac}"
-      elsif clause then res += dent(ind)+"#{ebrac}else if(" + clause.to_str(0) + ") #{sbrac}"
+      if first_if  then res =  dent(ind)+"if(" + clause.to_str(ind+1) + ") #{sbrac}"
+      elsif clause then res += dent(ind)+"#{ebrac}else if(" + clause.to_str(ind+1) + ") #{sbrac}"
       else              res += dent(ind)+"#{ebrac}else #{sbrac}" end
       first_if = false
       if inline
@@ -994,7 +1008,7 @@ typedef struct {{parser|cap}}GmString      {{parser|cap}}GmString;
 {% if use_gmlist %}
 struct {{parser|cap}}GmList {
     void *                       v;
-    struct {{parser|cap}}List *            next;
+    struct {{parser|cap}}GmList *            next;
 };
 typedef struct {{parser|cap}}GmList        {{parser|cap}}GmList;
 {% endif %}
