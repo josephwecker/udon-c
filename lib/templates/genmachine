@@ -819,7 +819,9 @@ end
 #-------- Templates ----------
 $d = File.dirname(File.realpath(__FILE__)) + '/'
 templates = ['parser.c', 'parser.h']
-templates.map!{|t| [t, IO.read($d+t)]}
+templates.map!{|t| [t, IO.read($d+t).gsub('Genm','{{parser|cap}}').
+                                     gsub('GENM','{{parser|up}}').
+                                     gsub('genm','{{parser}}')]}
 
 =begin
 templates = [

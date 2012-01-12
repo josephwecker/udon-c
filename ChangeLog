@@ -1,3 +1,17 @@
+[2012-01-11 | 42efd5b | <jwecker@justin.tv>]  Reattached the init_from_file functionality w/ appropriate tweeks.
+
+[2012-01-11 | 68c0e22 | <jwecker@justin.tv>]  Dynamically set a generated function to be exposed or not + various fixes.
+
+[2012-01-11 | 3620391 | <jwecker@justin.tv>]  Much better public vs. private separation, simplified and clarified variable/struct names, and other polish.
+
+[2012-01-11 | c2ebe83 | <jwecker@justin.tv>]  Pulled the templates out again. having them embedded was kicking my butt.
+
+[2012-01-11 | 3f17ea5 | <jwecker@justin.tv>]  Updated todo items. final stretch for this stuff.
+
+[2012-01-11 | 6712050 | <jwecker@justin.tv>]  Compiling, more or less. Just missing:
+
+[2012-01-11 | efac106 | <jwecker@justin.tv>]  Reassign body parent on reordered function so states get set correctly when children call gmf.
+
 [2012-01-11 | 5d38940 | <jwecker@justin.tv>]  List appending for inherited types compiling (but untested of course)
 
 [2012-01-11 | 39a0ee8 | <joseph.wecker@gmail.com>]  Continuing work on linked-list accumulation. Just some final typecasting left I believe.
