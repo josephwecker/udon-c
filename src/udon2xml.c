@@ -18,23 +18,31 @@ void emit_xml(void *u) {
     //emit_tag(u);
 }
 
+void print_err(UdonError *e) {
+    fprintf(stderr, "ERROR: %s\n  Line: %ld\n  Column: %ld\n",
+            e->message, e->data_line, e->data_column);
+}
+
 int main (int argc, char *argv[]) {
     int i;
-    if(argc < 2) return 1;
+    fprintf(stderr, "starting...\n");
+    if(argc < 2) {
+        fprintf(stderr, "bad argc.\n");
+        return 1;
+    }
     _UdonParseState *udon = udon_init_from_file(argv[1]);
     if(udon == NULL) {
-        return 1;
-        //udon_emit_error(stderr);
-        //return udon_error_value();
+        print_err(&udon_global_error);
+        return udon_global_error.code;
     }
     int res = udon_parse(udon);
     if(res) {
-        return 1;
-        //udon_emit_error(stderr);
+        print_err(&(udon_state(udon)->error));
+        return udon_state(udon)->error.code;
     } else {
         emit_xml(udon_state(udon)->result);
     }
-    //udon_reset_parser(udon);
+    udon_reset_state(udon);
     //udon_free_parser(udon);
     return res;
 }
