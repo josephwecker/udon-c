@@ -15,6 +15,8 @@
 #include <string.h>
 
 #define _UDON_EOF p->curr == p->end
+#define _UDON_ADVANCE_COL()  {p->column ++; p->curr ++;}
+#define _UDON_ADVANCE_LINE() {p->column=1; p->line ++; p->curr ++;}
 
 /* --- Error handling --- */
 struct UdonError udon_global_error = {

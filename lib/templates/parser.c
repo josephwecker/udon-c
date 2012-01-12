@@ -15,6 +15,8 @@
 {% if use_gmdict %}#include <string.h>{% endif %}
 
 #define _GENM_EOF p->curr == p->end
+#define _GENM_ADVANCE_COL()  {p->column ++; p->curr ++;}
+#define _GENM_ADVANCE_LINE() {p->column=1; p->line ++; p->curr ++;}
 
 /* --- Error handling --- */
 struct GenmError genm_global_error = {
