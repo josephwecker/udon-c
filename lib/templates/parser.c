@@ -17,28 +17,57 @@
 #define _GENM_EOF p->curr == p->end
 
 /* --- Error handling --- */
-int genm_global_error_code = GENM_OK;
-char genm_global_error_msg[128];
+struct GENM_ERROR genm_global_error = {
+    .code            = GENM_OK,
+    .message         = "",
 
-static inline genm_err(int etype, char *msg, ...);
-  // * inject current source pos
-  // * set globals
-  // * return etype
+    .parser_file     = __FILE__,
+    .parser_line     = __LINE__,
+    .parser_function = "",
 
-static inline genm_data_err(GenmParseState *p, char *msg, ...); // incl. ext pos.
-  // * inject current source pos
-  // * inject current data pos
-  // * set globals
-  // * set p members
-  // * longjump
+    .data_file       = "",
+    .data_line       = 0,
+    .data_column     = 0
+};
 
-static inline genm_memory_err(GenmParseState *p, char *msg, ...);
-  // * inject current source pos
-  // * inject current data pos
-  // * set globals
-  // * set p members
-  // * longjump IF IT IS SET UP
-  // * return etype
+
+#define _genm_err_set_global(ecode, msg, ...) {\
+    genm_global_error.code = (ecode);\
+    genm_global_error.parser_file = __FILE__;\
+    genm_global_error.parser_line = __LINE__;\
+    genm_global_error.parser_function = __FUNCTION__;\
+    vsnprintf(genm_global_error.message, 255, (msg), ##__VA_ARGS__);\
+}
+
+#define _genm_err_set_parser(ecode, msg, ...) {\
+    genm_global_error.data_file = p->_public.error.data_file = p->_public.source_origin;\
+    genm_global_error.data_line = p->_public.error.data_line = p->line;\
+    genm_global_error.data_column = p->_public.error.data_column = p->column;\
+    p->_public.error.code = (ecode);\
+    p->_public.error.parser_file = __FILE__;\
+    p->_public.error.parser_line = __LINE__;\
+    p->_public.error.parser_function = __FUNCTION__;\
+    vsnprintf(p->_public.error.message, 255, (msg), ##__VA_ARGS__);\
+}
+
+#define genm_err(ecode,msg,...) {\
+    _genm_err_set_global(ecode, msg, ##__VA_ARGS__);\
+    return NULL;\
+}
+
+#define genm_data_err(msg,...) {\
+    _genm_err_set_global(GENM_DATA_ERR, msg, ##__VA_ARGS__);\
+    _genm_err_set_parser(GENM_DATA_ERR, msg, ##__VA_ARGS__);\
+    longjmp(p->err_jmpbuf, GENM_DATA_ERR);\
+}
+
+#define genm_memory_err(msg,...) {\
+    _genm_err_set_global(GENM_MEMORY_ERR, msg, ##__VA_ARGS__);\
+    _genm_err_set_parser(GENM_MEMORY_ERR, msg, ##__VA_ARGS__);\
+    if(p->jmpbuf_set) longjmp(p->err_jmpbuf, GENM_MEMORY_ERR);\
+    else return NULL;\
+}
+
 
 {% if use_gmdict %}/* --- Dict --- */
 struct GenmDictEntry {
@@ -61,6 +90,7 @@ struct GenmDict {
 struct _GenmParseState {
     GenmParseState _public;
     jmp_buf          err_jmpbuf; /* Where to go on error. */
+    unsigned int     jmpbuf_set;
 
     uint64_t         line;
     uint64_t         column;
@@ -88,63 +118,58 @@ struct _GenmParseState {
 inline GenmParseState *genm_state(_GenmParseState *p) { return &(p->_public); }
 
 
-
-LParseState *l_init_from_file
-
-
 _GenmParseState *genm_init_from_file(char *filename) {
     size_t bytes_read;
     int     fd;
     struct  stat statbuf;
     _GenmParseState *p;
 
-    if( (p = (_GenmParseState *) genm_malloc(sizeof(_GenmParseState))) == NULL) {
-        genm_error(UDON_OUT_OF_MEMORY_ERROR, "Couldn't allocate memory for parser.");
-        return NULL;
-    }
-    if( (fd = open(filename, O_RDONLY)) < 0) {
-        genm_error(UDON_BAD_FILE_ERROR, "Couldn't open file '%s'.", filename);
-        return NULL;
-    }
+    if( (p=(_GenmParseState *)genm_malloc(sizeof(_GenmParseState))) == NULL)
+        genm_err(GENM_MEMORY_ERR, "Couldn't allocate memory for parser state.");
+    if( (fd=open(filename, O_RDONLY)) < 0)
+        genm_err(GENM_FILE_OPEN_ERR, "Couldn't open file '%s'.", filename);
+    if( fstat(fd, &statbuf) == -1)
+        genm_err(GENM_FILE_OPEN_ERR, "Couldn't stat file '%s'.", filename);
 
-    if( fstat(fd, &statbuf) == -1) {
-        genm_error(UDON_BAD_FILE_ERROR, "Opened, but couldn't stat file '%s'.", filename);
-        return NULL;
-    }
+    p->_public.source_size   = statbuf.st_size;
+    p->_public.source_origin = filename;
 
-    p->size     = statbuf.st_size;
-    p->filename = filename;
+    /* The padding is so that quickscan stuff can look in bigger chunks without overflowing */
+    if( (p->_public.source_buffer = (char *) genm_malloc(p->_public.source_size+8)) == NULL)
+        genm_err(GENM_MEMORY_ERR, "Couldn't allocate memory for file contents (file: '%s').",
+                filename);
 
-    // padding to the right so that quickscan stuff can look in bigger chunks
-    if( (p->buffer = (char *) genm_malloc(p->size+8)) == NULL)  {
-        genm_error(UDON_OUT_OF_MEMORY_ERROR, "Couldn't allocate memory for file contents (file: '%s').", filename);
-        return NULL;
-    }
+    if( (bytes_read = read(fd, p->_public.source_buffer, p->_public.source_size)) != p->_public.source_size)
+        genm_err(GENM_FILE_READ_ERR, "Only read %zd of %zd bytes from file '%s'.",
+                bytes_read, p->_public.source_size, filename);
 
-    if( (bytes_read = read(fd, p->buffer, p->size)) != p->size) {
-        genm_error(UDON_READ_FILE_ERROR, "Only read %zd of %zd bytes from file '%s'.", bytes_read, p->size, filename);
-        return NULL;
-    }
-
-    genm_reset_parser(p);
+    genm_reset_state(p);
     close(fd);
     return p;
 }
 
-int genm_reset_parser(_GenmParseState *p) {
-    p->curr          = p->buffer;
-    p->end           = &(p->buffer[p->size - 1]);
+void genm_reset_state(_GenmParseState *p) {
+    p->jmpbuf_set                    = 0;
+    p->_public.result                = NULL;
+    p->_public.error.code            = GENM_OK;
+    p->_public.error.message[0]      = 0;
+    p->_public.error.parser_file     = __FILE__;
+    p->_public.error.parser_line     = __LINE__;
+    p->_public.error.parser_function = __FUNCTION__;
+    p->_public.error.data_file       = "";
+    p->_public.error.data_line       = 0;
+    p->_public.error.data_column     = 0;
+    p->_public.warnings              = _new_genm_list(p);
 
-    p->qcurr         = (uint64_t *) p->buffer;
-    p->qsize         = p->size >> 3; // size in 64b chunks
-    p->qend          = &(p->qcurr[p->qsize - 1]);
+    p->line                          = 1;
+    p->column                        = 1;
+    p->curr                          = p->_public.source_buffer;
+    p->qcurr                         = (uint64_t *)p->_public.source_buffer;
+    p->end                           = &(p->_public.source_buffer[p->_public.source_size - 1]);
+    p->qsize                         = p->_public.source_size >> 3; /* size in 64bit chunks */
+    p->qend                          = &(p->qcurr[p->qsize - 1]);
 
-    p->curr[p->size] = 0; // last chance null terminator, just in case.
-
-    p->column        = 1;
-    p->line          = 1;
-    p->error         = UDON_NO_ERROR;
-    p->state         = UDON_NOT_STARTED;
+    p->curr[p->_public.source_size]  = 0; /* last chance null terminator, just in case. */
 }
 
 int genm_free_parser(_GenmParseState *p) {

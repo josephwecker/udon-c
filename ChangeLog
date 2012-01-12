@@ -1,3 +1,5 @@
+[2012-01-12 | a575afc | <joseph.wecker@gmail.com>]  Simplifying templates a bit, fixing interface for errors and file loading. In progress. Non-working commit.
+
 [2012-01-11 | 42efd5b | <jwecker@justin.tv>]  Reattached the init_from_file functionality w/ appropriate tweeks.
 
 [2012-01-11 | 68c0e22 | <jwecker@justin.tv>]  Dynamically set a generated function to be exposed or not + various fixes.

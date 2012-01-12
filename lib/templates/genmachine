@@ -21,6 +21,8 @@
 #   * Make sure eof check always happens on initial state
 #   * Some way to get out of memory error messages to emit the real source
 #     (i.e., turn into a macro somehow)
+#   * Automatic errors on "... character expected" situations that include the
+#     rule + state.
 #
 
 INDENTS = 4
@@ -158,7 +160,7 @@ class GM
       if fnames[expect[:function]].nil?
         $stderr.puts("Warning: missing functional group: #{real_fname(expect[:function])}")
         f = GMFunction.new(self, expect[:function], "static inline void *")
-        f.body << GMCommand.new(f, "_#{@name.upcase}_ERR(\"Parser for '#{real_fname(expect[:function])}' not yet implemented.\")")
+        f.body << GMCommand.new(f, "#{@name}_data_err(\"Parser for '#{real_fname(expect[:function])}' not yet implemented.\")")
         f.body << GMCommand.new(f, "return NULL")
         @body << f
       elsif expect[:state]
@@ -175,7 +177,7 @@ class GM
       ft = type_map(for_type)
       f = GMFunction.new(self, fname, "static inline #{ft}")
       f.register_local(ft,'res',"(#{ft})#{@name}_malloc(sizeof(#{type_map(for_type,false)}))")
-      f.body << GMCommand.new(f, "if(!res) _#{@name.upcase}_MEM_ERR(\"Memory allocation failed for #{for_type}.\")")
+      f.body << GMCommand.new(f, "if(!res) #{@name}_memory_err(\"Memory allocation failed for #{for_type}.\")")
       f.body << GMCommand.new(f, "return res")
       @body << f
     end
@@ -243,7 +245,7 @@ class GMGenericChild
       matched = true
       is_done = true
     elsif c[0] == 'err'
-      @body << GMCommand.new(self, "_#{gm.name.upcase}_ERR(\"#{c[2].gsub('"','\\"')}\")")
+      @body << GMCommand.new(self, "#{gm.name}_data_err(\"#{c[2].gsub('"','\\"')}\")")
       new_c = yield
       matched = true
       is_done = true
@@ -580,7 +582,7 @@ class GMFunction < GMGenericChild
         msg += "(substate '#{parts[:substate]}') " if parts[:substate]
         msg += "not yet implemented."
         res += dent(ind)+e+":\n"
-        res += dent(ind)+'    _'+gm.name.upcase+'_ERR("'+msg+"\");\n"
+        res += dent(ind)+'    '+gm.name+'_data_err("'+msg+"\");\n"
         if @warnings
           msg = "Warning: missing state for /#{gm.real_fname(@name)}: #{st}"
           msg += " (substate #{parts[:substate]})" if parts[:substate]

@@ -38,9 +38,21 @@ extern "C" {
  * to ignore in multithreaded environments etc. and use the error members of
  * the GenmParseState struct instead.
  */
-extern int genm_global_error_code;
-extern char genm_global_error_msg[128];
 
+struct GENM_ERROR {
+    unsigned int code;
+    char         message[256];
+
+    const char * parser_file;
+    uint64_t     parser_line;
+    const char * parser_function;
+
+    const char * data_file;
+    uint64_t     data_line;
+    uint64_t     data_column;
+};
+typedef struct GENM_ERROR GENM_ERROR;
+extern GENM_ERROR genm_global_error;
 
 
 #define genm_error_string
@@ -109,8 +121,7 @@ struct GenmParseState {
 
     /* --- Result State --- */
     void *           result;
-    unsigned int     error_code;
-    char             error_message[256];
+    GENM_ERROR       error;
     GenmList *       warnings;
 };
 typedef struct GenmParseState GenmParseState;
