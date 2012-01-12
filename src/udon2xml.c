@@ -21,7 +21,7 @@ void emit_xml(void *u) {
 int main (int argc, char *argv[]) {
     int i;
     if(argc < 2) return 1;
-    _UdonParseState *udon = udon_new_parser_from_file(argv[1]);
+    _UdonParseState *udon = udon_init_from_file(argv[1]);
     if(udon == NULL) {
         return 1;
         //udon_emit_error(stderr);
@@ -32,7 +32,7 @@ int main (int argc, char *argv[]) {
         return 1;
         //udon_emit_error(stderr);
     } else {
-        emit_xml(udon->result);
+        emit_xml(udon_state(udon)->result);
     }
     //udon_reset_parser(udon);
     //udon_free_parser(udon);

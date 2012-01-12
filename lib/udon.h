@@ -142,6 +142,10 @@ struct UdonParseState {
 typedef struct UdonParseState UdonParseState;
 
 
+extern _UdonParseState *udon_init_from_file(char *filename);
+extern inline UdonParseState *udon_state(_UdonParseState *p);
+
+
 extern int udon_parse(_UdonParseState *p);
 
 #ifdef __cplusplus

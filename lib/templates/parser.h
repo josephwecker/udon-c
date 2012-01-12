@@ -112,6 +112,10 @@ struct {{parser|cap}}ParseState {
 };
 typedef struct {{parser|cap}}ParseState {{parser|cap}}ParseState;
 
+
+extern _{{parser|cap}}ParseState *{{parser}}_init_from_file(char *filename);
+extern inline {{parser|cap}}ParseState *{{parser}}_state(_{{parser|cap}}ParseState *p);
+
 {% for p in pub_protos %}
 extern {{p}}{% endfor %}
 

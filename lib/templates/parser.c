@@ -9,6 +9,9 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <err.h>
 {% if use_gmdict %}#include <string.h>{% endif %}
 
 #define _{{parser|up}}_EOF p->curr == p->end
@@ -60,6 +63,41 @@ struct _{{parser|cap}}ParseState {
 //  * ParseState --> _ParseState public function
 //  * Alternate hash routines for language bindings (e.g., natively create ruby
 //    hashes immediately, etc.)
+
+inline {{parser|cap}}ParseState *{{parser}}_state(_{{parser|cap}}ParseState *p) { return &(p->_public); }
+
+_{{parser|cap}}ParseState *{{parser}}_init_from_file(char *filename) {
+    size_t  bytes_read;
+    int     fd;
+    struct  stat statbuf;
+    _{{parser|cap}}ParseState *state;
+
+    if( (state = (_{{parser|cap}}ParseState *) udon_malloc(sizeof(_{{parser|cap}}ParseState))) == NULL)
+        err({{parser|up}}_MEMORY_ERR, "Couldn't allocate memory for parser state.");
+    if( (fd = open(filename, O_RDONLY)) < 0)
+        err({{parser|up}}_FILE_OPEN_ERR, "Couldn't open %s.", filename);
+
+    if( fstat(fd, &statbuf) == -1)
+        err({{parser|up}}_FILE_OPEN_ERR, "Opened, but couldn't stat %s.", filename);
+
+    state->_public.source_size = statbuf.st_size;
+    state->qsize    = state->_public.source_size >> 3; // size in uint64_t chunks
+    state->_public.source_origin = filename;
+
+    // padding to the right so that quickscan stuff can look in bigger chunks
+    if( (state->_public.source_buffer = (char *) udon_malloc(state->_public.source_size+8)) == NULL)
+        err({{parser|up}}_MEMORY_ERR, "Couldn't allocate memory for file contents (%s).", filename);
+
+    if( (bytes_read = read(fd, state->_public.source_buffer, state->_public.source_size)) != state->_public.source_size)
+        err({{parser|up}}_FILE_READ_ERR, "Only read %zd of %zd bytes from %s.", bytes_read, state->_public.source_size, filename);
+
+    reset_state(state);
+    state->end    = &(state->_public.source_buffer[state->_public.source_size - 1]);
+    state->qend   = &(state->qcurr[state->qsize - 1]);
+    state->curr[state->_public.source_size] = 0; // Null terminate the whole thing just in case
+    close(fd);
+    return state;
+}
 
 {% if use_gmdict %}/* --- Dict generic code --- */
 static inline int is_prime(unsigned int n) {
