@@ -6,10 +6,10 @@ void emit_xml(void *u) {
     printf("<?xml version=\"1.0\"?>");
     UdonFullNode *root = (UdonFullNode *)u;
     UdonNode *curr_child = root->children;
-    UdonGmList *curr_class = root->classes;
+    UdonList *curr_class = root->classes;
     // Temporary- just testing some basic parser functionality
     while(curr_class != NULL) {
-        UdonGmString *class = (UdonGmString *)(curr_class->v);
+        UdonString *class = (UdonString *)(curr_class->v);
         printf("--- ");
         fwrite(class->start, 1, class->length, stdout);
         printf("\n");

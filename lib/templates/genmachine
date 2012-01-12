@@ -4,8 +4,7 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * Better separation and organization of private/public header stuff
-#     (prototypes, structs, etc.)
+#   * Correct prototype separation based on GMFunction flag.
 #   * ..._new_parser_from_file implementation
 #   * _..._MEM_ERR implementation
 #   * _..._ADVANCE_LINE implementation
@@ -80,7 +79,7 @@ class GM
         f = GMFunction.new(self, "#{@name}_parse", 'int')
         f.body << GMCommand.new(f, "int errval = setjmp(p->err_jmpbuf)")
         f.body << GMCommand.new(f, "if(errval) return errval")
-        f.body << GMCommand.new(f, "p->result = (void *)#{parse_location(c[2])[1]}")
+        f.body << GMCommand.new(f, "p->_public.result = (void *)#{parse_location(c[2])[1]}")
         f.body << GMCommand.new(f, "return 0")
         @body << f
         c = yield
@@ -134,9 +133,9 @@ class GM
     cap = @name.capitalize
     case
     when t=='Z+';           'uint64_t'
-    when t=='LIST';         cap+'GmList'+p
-    when t=='STRING';       cap+'GmString'+p
-    when t=='DICT';         cap+'GmDict'+p
+    when t=='LIST';         cap+'List'+p
+    when t=='STRING';       cap+'String'+p
+    when t=='DICT';         cap+'Dict'+p
     when t=~/^[A-Z]+[a-z]/; cap+t+p
     else t
     end
@@ -393,7 +392,7 @@ class GMCommand < GMGenericChild
         lsmain, lsmember = outv(@lside).split('->')
         tail = lsmain + '->_' + lsmember + '__tail'
         @fullcmd = ['{',
-          "    #{gm.name.capitalize}GmList *_item = #{gm.allocator('LIST')};",
+          "    #{gm.name.capitalize}List *_item = #{gm.allocator('LIST')};",
           "    _item->v = (void *)#{outv(@rside)};",
           "    _item->next = NULL;",
           "    if(#{tail} == NULL) {",
@@ -486,7 +485,7 @@ class GMCommand < GMGenericChild
            ['COL','p->column'],          ['CURR', '*(p->curr)'],
            ['C',  'self_res->children'], ['α',   'greek_alpha'],
            ['β', 'greek_beta']]
-    map.reduce(cmd.strip.gsub(/\.(?!")/,'->')) do |val, mapping|
+    map.reduce(cmd.strip.gsub(/\.(?!"|result)/,'->')) do |val, mapping|
       from, to = mapping
       val.gsub(/(?<=^|[^a-zA-Z0-9_])#{from}(?=$|[^a-zA-Z0-9_])/u, to)
     end
@@ -558,11 +557,11 @@ class GMFunction < GMGenericChild
   end
 
   def to_proto_str(ind=0)
-    res = dent(ind)+"#{@ftype} #{@name}(#{gm.name.capitalize}ParseState *p);"
+    res = dent(ind)+"#{@ftype} #{@name}(_#{gm.name.capitalize}ParseState *p);"
   end
 
   def to_str(ind=0)
-    res = dent(ind)+"#{@ftype} #{@name}(#{gm.name.capitalize}ParseState *p) {\n"
+    res = dent(ind)+"#{@ftype} #{@name}(_#{gm.name.capitalize}ParseState *p) {\n"
     ind = 1
     @locals.each do |lname, ltype_init|
       ltype, linit = ltype_init

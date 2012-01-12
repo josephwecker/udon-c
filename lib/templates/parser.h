@@ -4,130 +4,114 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include <sysexits.h>
 #include <stdint.h>
 #include <stddef.h>
-#include <setjmp.h>
 
 
-/* --- Allow setting different malloc/free routines --- */
+/* --- Memory Management ---
+ * Allows you to set these to something else if you need to use custom memory
+ * allocators etc. (for example, when doing a language binding).
+ */
 #ifdef _{{parser|up}}_NONSTANDARD_MEMORY
-void *{{parser}}_calloc(size_t count, size_t size);
-void *{{parser}}_malloc(size_t size);
-void  {{parser}}_free(void *ptr, size_t size);
+    void *{{parser}}_calloc(size_t count, size_t size);
+    void *{{parser}}_malloc(size_t size);
+    void  {{parser}}_free(void *ptr, size_t size);
 #else
-
-#define {{parser}}_calloc(count,size) calloc(count,size)
-#define {{parser}}_malloc(size)       malloc(size)
-#define {{parser}}_free(ptr,size)     free(ptr)
+    #define {{parser}}_calloc(count,size) calloc(count,size)
+    #define {{parser}}_malloc(size)       malloc(size)
+    #define {{parser}}_free(ptr,size)     free(ptr)
 #endif
 
-/* --- Error values --- */
-#include <sysexits.h>
+/* --- Error values ---
+ * (Tied to sysexits standard exit values so you can exit a program with them
+ * and have it be somewhat meaningful).
+ */
 #define {{parser|up}}_OK             EX_OK
 #define {{parser|up}}_MEMORY_ERR     EX_OSERR
 #define {{parser|up}}_FILE_OPEN_ERR  EX_NOINPUT
 #define {{parser|up}}_FILE_READ_ERR  EX_IOERR
 #define {{parser|up}}_DATA_ERR       EX_DATAERR
 
-/* --- Global parser error state --- */
+/* --- Global parser error state ---
+ * These get created in the parser implementation file as a backup. Feel free
+ * to ignore in multithreaded environments etc. and use the error members of
+ * the ParseState struct instead.
+ */
 extern int {{parser}}_global_error;
 extern char {{parser}}_global_error_msg[128];
 
-{% if use_gmstring %}
-struct {{parser|cap}}GmString {
-    char *                       start;
-    uint64_t                     length;
-};
-typedef struct {{parser|cap}}GmString      {{parser|cap}}GmString;
-{% endif %}
-{% if use_gmlist %}
-struct {{parser|cap}}GmList {
-    void *                       v;
-    struct {{parser|cap}}GmList *            next;
-};
-typedef struct {{parser|cap}}GmList        {{parser|cap}}GmList;
-{% endif %}
-/* --- For hash tables --- */
-{% if use_gmdict %}
-struct {{parser|cap}}GmEntry {
-    {{parser|cap}}GmString *key;
-    void *value;
-    unsigned int _used;
-};
-typedef struct {{parser|cap}}GmEntry {{parser|cap}}GmEntry;
 
-struct {{parser|cap}}GmDict {
-    {{parser|cap}}GmEntry *table;
-    uint64_t size;
-    unsigned int filled;
-};
-typedef struct {{parser|cap}}GmDict {{parser|cap}}GmDict;
-{% endif %}
-
-/* TODO:
- *  - Linked Lists if needed
- *  - Hash tables if needed
- *  - Strings if needed (can't imagine them not being needed)
- *  - Types / enums as per the source
- *  - Public prototypes
- *
+{% if use_gmstring %}/* --- String ---
+ * Not null-terminated and by default simply a pointer into the original data,
+ * so you may want to allocate a copy of it and null-terminate it depending on
+ * how you want to use it.
  */
-
-/*{% if use_gmdict %}
-struct {{parser|cap}}GmDict {
-    {{parser|cap}}GmList                   keys;
-    {{parser|cap}}GmList                   _keys__tail;
-    struct hsearch_data *        table;
-    uint64_t                     size;
-    uint64_t                     allocated;
+struct {{parser|cap}}String {
+    char * start;
+    uint64_t length;
 };
-typedef struct {{parser|cap}}GmDict        {{parser|cap}}GmDict;
-{% endif %}*/
+typedef struct {{parser|cap}}String {{parser|cap}}String;
+{% endif %}
 
-{% for e in enums %}
-{{e}}
+{% if use_gmlist %}/* --- Linked List --- */
+struct {{parser|cap}}List {
+    void * v;
+    struct {{parser|cap}}List * next;
+};
+typedef struct {{parser|cap}}List {{parser|cap}}List;
+{% endif %}
 
-{% endfor %}{% for s in structs %}
-{{s}}
+{% if use_gmdict %}/* --- Dict / Hash table --- */
+/* Opaque dictionary instance */
+struct {{parser|cap}}Dict;
+typedef struct {{parser|cap}}Dict {{parser|cap}}Dict;
+
+/* Iterating and querying dictionaries */
+extern {{parser|cap}}List *{{parser}}_dict_keys({{parser|cap}}Dict *dict);
+extern void * {{parser}}_dict_value_for({{parser|cap}}Dict *dict, {{parser|cap}}String *key);
+
+/* Mostly internally used interface, exposed in case it's customized */
+extern void * {{parser}}_dict_add_or_update({{parser|cap}}Dict *dict, {{parser|cap}}String *key, void *new_value);
+extern {{parser|cap}}Dict *{{parser}}_dict_create(void); /* default size */
+extern {{parser|cap}}Dict *{{parser}}_dict_create_sized(size_t size);
+extern void {{parser}}_dict_destroy({{parser|cap}}Dict *dict);
+
+{% endif %}
+
+/* --- Return structure constants / enums --- */
+{% for e in enums %}{{e}}
 
 {% endfor %}
 
-/* TODO: move opaque parts into their own struct in the c file with this as a
- *       member
+/* --- Main return structures --- */
+{% for s in structs %}{{s}}
+
+{% endfor %}
+
+/* Opaque for internal use */
+struct _{{parser|cap}}ParseState;
+
+/* --- ParseState ---
+ * Holds the data to be parsed and the result, along with internal state
+ * information. Theoretically allows multiple parsers to run in parallel or
+ * even to return in a partially parsed state.
  */
 struct {{parser|cap}}ParseState {
-    // --- Set these ---
-    char             *buffer;
-    size_t           size;
-    char             *filename;  // optional, of course
-    jmp_buf          err_jmpbuf; // Use setjmp(...)
+    /* --- Source --- */
+    uint8_t *        source_buffer;
+    size_t           source_size;
+    char *           source_origin;  /* Filename, etc. Optional. */
 
-    // --- Result State ---
-    void             *result;
+    /* --- Result State --- */
+    void *           result;
     unsigned int     error_code;
     char             error_message[256];
-    {{parser|cap}}GmList         warnings;
-
-    // --- Current State ---
-    unsigned int     state;
-    uint64_t         line;
-    uint64_t         column;
-
-    // --- Generally Opaque ---
-    char             *curr;
-    uint64_t         *qcurr;
-    char             *end;
-    uint64_t         *qend;
-    size_t           qsize;  // Automatically calculated, for quickscans.
-    char             *alpha; // Used for accumulating
+    {{parser|cap}}List         warnings;
 };
 typedef struct {{parser|cap}}ParseState {{parser|cap}}ParseState;
-
-{% for p in priv_protos %}
-{{p}}{% endfor %}
 
 #ifdef __cplusplus
 }
 #endif
 #endif
-

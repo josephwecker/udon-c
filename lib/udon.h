@@ -4,87 +4,82 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include <sysexits.h>
 #include <stdint.h>
 #include <stddef.h>
-#include <setjmp.h>
 
 
-/* --- Allow setting different malloc/free routines --- */
+/* --- Memory Management ---
+ * Allows you to set these to something else if you need to use custom memory
+ * allocators etc. (for example, when doing a language binding).
+ */
 #ifdef _UDON_NONSTANDARD_MEMORY
-void *udon_calloc(size_t count, size_t size);
-void *udon_malloc(size_t size);
-void  udon_free(void *ptr, size_t size);
+    void *udon_calloc(size_t count, size_t size);
+    void *udon_malloc(size_t size);
+    void  udon_free(void *ptr, size_t size);
 #else
-
-#define udon_calloc(count,size) calloc(count,size)
-#define udon_malloc(size)       malloc(size)
-#define udon_free(ptr,size)     free(ptr)
+    #define udon_calloc(count,size) calloc(count,size)
+    #define udon_malloc(size)       malloc(size)
+    #define udon_free(ptr,size)     free(ptr)
 #endif
 
-/* --- Error values --- */
-#include <sysexits.h>
+/* --- Error values ---
+ * (Tied to sysexits standard exit values so you can exit a program with them
+ * and have it be somewhat meaningful).
+ */
 #define UDON_OK             EX_OK
 #define UDON_MEMORY_ERR     EX_OSERR
 #define UDON_FILE_OPEN_ERR  EX_NOINPUT
 #define UDON_FILE_READ_ERR  EX_IOERR
 #define UDON_DATA_ERR       EX_DATAERR
 
-/* --- Global parser error state --- */
+/* --- Global parser error state ---
+ * These get created in the parser implementation file as a backup. Feel free
+ * to ignore in multithreaded environments etc. and use the error members of
+ * the ParseState struct instead.
+ */
 extern int udon_global_error;
 extern char udon_global_error_msg[128];
 
 
-struct UdonGmString {
-    char *                       start;
-    uint64_t                     length;
-};
-typedef struct UdonGmString      UdonGmString;
-
-
-struct UdonGmList {
-    void *                       v;
-    struct UdonGmList *            next;
-};
-typedef struct UdonGmList        UdonGmList;
-
-/* --- For hash tables --- */
-
-struct UdonGmEntry {
-    UdonGmString *key;
-    void *value;
-    unsigned int _used;
-};
-typedef struct UdonGmEntry UdonGmEntry;
-
-struct UdonGmDict {
-    UdonGmEntry *table;
-    uint64_t size;
-    unsigned int filled;
-};
-typedef struct UdonGmDict UdonGmDict;
-
-
-/* TODO:
- *  - Linked Lists if needed
- *  - Hash tables if needed
- *  - Strings if needed (can't imagine them not being needed)
- *  - Types / enums as per the source
- *  - Public prototypes
- *
+/* --- String ---
+ * Not null-terminated and by default simply a pointer into the original data,
+ * so you may want to allocate a copy of it and null-terminate it depending on
+ * how you want to use it.
  */
-
-/*
-struct UdonGmDict {
-    UdonGmList                   keys;
-    UdonGmList                   _keys__tail;
-    struct hsearch_data *        table;
-    uint64_t                     size;
-    uint64_t                     allocated;
+struct UdonString {
+    char * start;
+    uint64_t length;
 };
-typedef struct UdonGmDict        UdonGmDict;
-*/
+typedef struct UdonString UdonString;
 
 
+/* --- Linked List --- */
+struct UdonList {
+    void * v;
+    struct UdonList * next;
+};
+typedef struct UdonList UdonList;
+
+
+/* --- Dict / Hash table --- */
+/* Opaque dictionary instance */
+struct UdonDict;
+typedef struct UdonDict UdonDict;
+
+/* Iterating and querying dictionaries */
+extern UdonList *udon_dict_keys(UdonDict *dict);
+extern void * udon_dict_value_for(UdonDict *dict, UdonString *key);
+
+/* Mostly internally used interface, exposed in case it's customized */
+extern void * udon_dict_add_or_update(UdonDict *dict, UdonString *key, void *new_value);
+extern UdonDict *udon_dict_create(void); /* default size */
+extern UdonDict *udon_dict_create_sized(size_t size);
+extern void udon_dict_destroy(UdonDict *dict);
+
+
+
+/* --- Return structure constants / enums --- */
 enum UdonNodeType {
     UDON_ROOT,
     UDON_BLANK,
@@ -95,8 +90,10 @@ typedef enum UdonNodeType        UdonNodeType;
 
 
 
+
+/* --- Main return structures --- */
 struct UdonNode {
-    UdonGmList                   _base;
+    UdonList                     _base;
 
     UdonNodeType                 node_type;
     uint64_t                     source_line;
@@ -105,68 +102,45 @@ struct UdonNode {
 typedef struct UdonNode          UdonNode;
 
 
-
 struct UdonFullNode {
     UdonNode                     _base;
 
     UdonNode *                   children;
     UdonNode *                   _children__tail;
-    UdonGmString *               name;
-    UdonGmString *               id;
-    UdonGmList *                 classes;
-    UdonGmList *                 _classes__tail;
-    UdonGmDict *                 attributes;
+    UdonString *                 name;
+    UdonString *                 id;
+    UdonList *                   classes;
+    UdonList *                   _classes__tail;
+    UdonDict *                   attributes;
 };
 typedef struct UdonFullNode      UdonFullNode;
 
 
 
 
-/* TODO: move opaque parts into their own struct in the c file with this as a
- *       member
+/* Opaque for internal use */
+struct _UdonParseState;
+
+/* --- ParseState ---
+ * Holds the data to be parsed and the result, along with internal state
+ * information. Theoretically allows multiple parsers to run in parallel or
+ * even to return in a partially parsed state.
  */
 struct UdonParseState {
-    // --- Set these ---
-    char             *buffer;
-    size_t           size;
-    char             *filename;  // optional, of course
-    jmp_buf          err_jmpbuf; // Use setjmp(...)
+    /* --- Source --- */
+    uint8_t *        source_buffer;
+    size_t           source_size;
+    char *           source_origin;  /* Filename, etc. Optional. */
 
-    // --- Result State ---
-    void             *result;
+    /* --- Result State --- */
+    void *           result;
     unsigned int     error_code;
     char             error_message[256];
-    UdonGmList         warnings;
-
-    // --- Current State ---
-    unsigned int     state;
-    uint64_t         line;
-    uint64_t         column;
-
-    // --- Generally Opaque ---
-    char             *curr;
-    uint64_t         *qcurr;
-    char             *end;
-    uint64_t         *qend;
-    size_t           qsize;  // Automatically calculated, for quickscans.
-    char             *alpha; // Used for accumulating
+    UdonList         warnings;
 };
 typedef struct UdonParseState UdonParseState;
-
-
-int udon_parse(UdonParseState *p);
-static inline UdonFullNode * _udon_node(UdonParseState *p);
-static inline UdonGmString * _udon_label(UdonParseState *p);
-static inline UdonFullNode * _udon_node__s_child_shortcut(UdonParseState *p);
-static inline UdonGmString * _udon_label__s_delim(UdonParseState *p);
-static inline void * _udon_id(UdonParseState *p);
-static inline void * _udon_comment(UdonParseState *p);
-static inline UdonFullNode * _new_udon_full_node(UdonParseState *p);
-static inline UdonGmList * _new_udon_gm_list(UdonParseState *p);
-static inline UdonGmString * _new_udon_gm_string(UdonParseState *p);
 
 #ifdef __cplusplus
 }
 #endif
 #endif
-
