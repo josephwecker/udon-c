@@ -120,6 +120,7 @@ typedef struct UdonFullNode      UdonFullNode;
 
 /* Opaque for internal use */
 struct _UdonParseState;
+typedef struct _UdonParseState _UdonParseState;
 
 /* --- ParseState ---
  * Holds the data to be parsed and the result, along with internal state
@@ -136,9 +137,12 @@ struct UdonParseState {
     void *           result;
     unsigned int     error_code;
     char             error_message[256];
-    UdonList         warnings;
+    UdonList *       warnings;
 };
 typedef struct UdonParseState UdonParseState;
+
+
+extern int udon_parse(_UdonParseState *p);
 
 #ifdef __cplusplus
 }

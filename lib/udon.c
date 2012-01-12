@@ -48,10 +48,9 @@ struct _UdonParseState {
     size_t           qsize;     /* Automatically calculated, for quickscans. */
     char             *alpha;    /* Used for accumulating. possibly depricated... */
 };
-typedef struct _UdonParseState _UdonParseState;
 
+/* --- Private prototypes --- */
 
-int udon_parse(_UdonParseState *p);
 static inline UdonFullNode * _udon_node(_UdonParseState *p);
 static inline UdonString * _udon_label(_UdonParseState *p);
 static inline UdonFullNode * _udon_node__s_child_shortcut(_UdonParseState *p);

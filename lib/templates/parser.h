@@ -91,6 +91,7 @@ extern void {{parser}}_dict_destroy({{parser|cap}}Dict *dict);
 
 /* Opaque for internal use */
 struct _{{parser|cap}}ParseState;
+typedef struct _{{parser|cap}}ParseState _{{parser|cap}}ParseState;
 
 /* --- ParseState ---
  * Holds the data to be parsed and the result, along with internal state
@@ -107,9 +108,12 @@ struct {{parser|cap}}ParseState {
     void *           result;
     unsigned int     error_code;
     char             error_message[256];
-    {{parser|cap}}List         warnings;
+    {{parser|cap}}List *       warnings;
 };
 typedef struct {{parser|cap}}ParseState {{parser|cap}}ParseState;
+
+{% for p in pub_protos %}
+extern {{p}}{% endfor %}
 
 #ifdef __cplusplus
 }

@@ -21,7 +21,7 @@ void emit_xml(void *u) {
 int main (int argc, char *argv[]) {
     int i;
     if(argc < 2) return 1;
-    UdonParseState *udon = udon_new_parser_from_file(argv[1]);
+    _UdonParseState *udon = udon_new_parser_from_file(argv[1]);
     if(udon == NULL) {
         return 1;
         //udon_emit_error(stderr);

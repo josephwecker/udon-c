@@ -4,7 +4,6 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * Correct prototype separation based on GMFunction flag.
 #   * ..._new_parser_from_file implementation
 #   * _..._MEM_ERR implementation
 #   * _..._ADVANCE_LINE implementation
@@ -81,6 +80,7 @@ class GM
         f.body << GMCommand.new(f, "if(errval) return errval")
         f.body << GMCommand.new(f, "p->_public.result = (void *)#{parse_location(c[2])[1]}")
         f.body << GMCommand.new(f, "return 0")
+        f.public_prototype = true
         @body << f
         c = yield
       elsif c[0] == 'function'
@@ -201,11 +201,12 @@ class GM
 
   def output_private_prototypes()
     ensure_secondary
-    @body.map{|b| b.to_proto_str if b.is_a?(GMFunction)}.compact
+    @body.map{|b| b.to_proto_str if(b.is_a?(GMFunction) && !b.public_prototype)}.compact
   end
 
   def output_public_prototypes()
     ensure_secondary
+    @body.map{|b| b.to_proto_str if(b.is_a?(GMFunction) && b.public_prototype)}.compact
   end
 end
 
@@ -493,7 +494,8 @@ class GMCommand < GMGenericChild
 end
 
 class GMFunction < GMGenericChild
-  attr_accessor :ftype, :expected, :implemented, :eof_handler, :needs_generic_eof, :warnings
+  attr_accessor :ftype, :expected, :implemented, :eof_handler,
+    :needs_generic_eof, :warnings, :public_prototype
   def initialize(parent, name, return_type, inner=false)
     super(parent, name)
     @expected          = {}  # states and substates that will be jumped to
@@ -504,6 +506,7 @@ class GMFunction < GMGenericChild
     @needs_generic_eof = false
     @warnings          = true
     @ftype             = inner ? register_return_type(return_type) : return_type
+    @public_prototype  = false
   end
 
   def register_return_type(rt)
@@ -839,6 +842,7 @@ context = {
   'functions'    => gm.output_functions,
   'enums'        => gm.output_enums,
   'structs'      => gm.output_structs,
+  'pub_protos'   => gm.output_public_prototypes,
   'priv_protos'  => gm.output_private_prototypes,
   'use_gmstring' => gm.use_gmstring,
   'use_gmlist'   => gm.use_gmlist,

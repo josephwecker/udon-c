@@ -48,8 +48,8 @@ struct _{{parser|cap}}ParseState {
     size_t           qsize;     /* Automatically calculated, for quickscans. */
     char             *alpha;    /* Used for accumulating. possibly depricated... */
 };
-typedef struct _{{parser|cap}}ParseState _{{parser|cap}}ParseState;
 
+/* --- Private prototypes --- */
 {% for p in priv_protos %}
 {{p}}{% endfor %}
 
