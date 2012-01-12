@@ -17,7 +17,7 @@
 #define _GENM_EOF p->curr == p->end
 
 /* --- Error handling --- */
-struct GENM_ERROR genm_global_error = {
+struct GenmError genm_global_error = {
     .code            = GENM_OK,
     .message         = "",
 

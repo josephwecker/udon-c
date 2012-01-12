@@ -39,7 +39,7 @@ extern "C" {
  * the UdonParseState struct instead.
  */
 
-struct UDON_ERROR {
+struct UdonError {
     unsigned int code;
     char         message[256];
 
@@ -51,8 +51,8 @@ struct UDON_ERROR {
     uint64_t     data_line;
     uint64_t     data_column;
 };
-typedef struct UDON_ERROR UDON_ERROR;
-extern UDON_ERROR udon_global_error;
+typedef struct UdonError UdonError;
+extern UdonError udon_global_error;
 
 
 #define udon_error_string
@@ -150,7 +150,7 @@ struct UdonParseState {
 
     /* --- Result State --- */
     void *           result;
-    UDON_ERROR       error;
+    UdonError        error;
     UdonList *       warnings;
 };
 typedef struct UdonParseState UdonParseState;

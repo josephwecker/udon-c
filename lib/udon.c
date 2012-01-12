@@ -17,7 +17,7 @@
 #define _UDON_EOF p->curr == p->end
 
 /* --- Error handling --- */
-struct UDON_ERROR udon_global_error = {
+struct UdonError udon_global_error = {
     .code            = UDON_OK,
     .message         = "",
 

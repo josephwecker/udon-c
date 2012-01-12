@@ -39,7 +39,7 @@ extern "C" {
  * the GenmParseState struct instead.
  */
 
-struct GENM_ERROR {
+struct GenmError {
     unsigned int code;
     char         message[256];
 
@@ -51,8 +51,8 @@ struct GENM_ERROR {
     uint64_t     data_line;
     uint64_t     data_column;
 };
-typedef struct GENM_ERROR GENM_ERROR;
-extern GENM_ERROR genm_global_error;
+typedef struct GenmError GenmError;
+extern GenmError genm_global_error;
 
 
 #define genm_error_string
@@ -121,7 +121,7 @@ struct GenmParseState {
 
     /* --- Result State --- */
     void *           result;
-    GENM_ERROR       error;
+    GenmError        error;
     GenmList *       warnings;
 };
 typedef struct GenmParseState GenmParseState;
