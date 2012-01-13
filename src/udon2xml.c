@@ -42,8 +42,8 @@ int main (int argc, char *argv[]) {
     } else {
         emit_xml(udon_state(udon)->result);
     }
-    udon_reset_state(udon);
-    //udon_free_parser(udon);
+    udon_reset_parser(udon);
+    udon_free_parser(udon);
     return res;
 }
 

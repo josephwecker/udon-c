@@ -112,15 +112,14 @@ struct _GenmParseState {
 {{p}}{% endfor %}
 
 
-/*----------------- IMPLEMENTATION ---------------------*/
-
-// TODO:
-//  * ParseState --> _ParseState public function
-//  * Alternate hash routines for language bindings (e.g., natively create ruby
-//    hashes immediately, etc.)
+/*----------------- IMPLEMENTATION ---------------------
+ * TODO:
+ *  - ParseState --> _ParseState public function
+ *  - Alternate hash routines for language bindings (e.g., natively create ruby
+ *    hashes immediately, etc.)
+ */
 
 inline GenmParseState *genm_state(_GenmParseState *p) { return &(p->_public); }
-
 
 _GenmParseState *genm_init_from_file(char *filename) {
     size_t bytes_read;
@@ -147,12 +146,12 @@ _GenmParseState *genm_init_from_file(char *filename) {
         genm_err(GENM_FILE_READ_ERR, "Only read %zd of %zd bytes from file '%s'.",
                 bytes_read, p->_public.source_size, filename);
 
-    genm_reset_state(p);
+    genm_reset_parser(p);
     close(fd);
     return p;
 }
 
-void genm_reset_state(_GenmParseState *p) {
+void genm_reset_parser(_GenmParseState *p) {
     p->jmpbuf_set                    = 0;
     p->_public.result                = NULL;
     p->_public.error.code            = GENM_OK;
@@ -180,42 +179,6 @@ int genm_free_parser(_GenmParseState *p) {
     genm_free(p->_public.source_buffer, p->_public.source_size);
     return 0;
 }
-/*    size_t  bytes_read;
-    int     fd;
-    struct  stat statbuf;
-    _GenmParseState *state;
-
-    if( (state = (_GenmParseState *) genm_malloc(sizeof(_GenmParseState))) == NULL)
-        err(GENM_MEMORY_ERR, "Couldn't allocate memory for parser state.");
-    if( (fd = open(filename, O_RDONLY)) < 0)
-        err(GENM_FILE_OPEN_ERR, "Couldn't open %s.", filename);
-
-    if( fstat(fd, &statbuf) == -1)
-        err(GENM_FILE_OPEN_ERR, "Opened, but couldn't stat %s.", filename);
-
-    state->_public.source_size = statbuf.st_size;
-    state->qsize    = state->_public.source_size >> 3; // size in uint64_t chunks
-    state->_public.source_origin = filename;
-
-    // padding to the right so that quickscan stuff can look in bigger chunks
-    if( (state->_public.source_buffer = (char *) genm_malloc(state->_public.source_size+8)) == NULL)
-        err(GENM_MEMORY_ERR, "Couldn't allocate memory for file contents (%s).", filename);
-
-    if( (bytes_read = read(fd, state->_public.source_buffer, state->_public.source_size)) != state->_public.source_size)
-        err(GENM_FILE_READ_ERR, "Only read %zd of %zd bytes from %s.", bytes_read, state->_public.source_size, filename);
-
-    genm_reset_state(state);
-    state->end    = &(state->_public.source_buffer[state->_public.source_size - 1]);
-    state->qend   = &(state->qcurr[state->qsize - 1]);
-    state->curr[state->_public.source_size] = 0; // Null terminate the whole thing just in case
-    close(fd);
-    return state;
-}
-
-void genm_reset_state(_GenmParseState *p) {
-    p->
-}
-*/
 
 {% if use_gmdict %}/* --- Dict generic code --- */
 static inline int is_prime(unsigned int n) {

@@ -129,7 +129,8 @@ typedef struct GenmParseState GenmParseState;
 /* --- MAIN INTERFACE --- */
 extern _GenmParseState  *genm_init_from_file(char *filename);
 extern GenmParseState   *genm_state(_GenmParseState *p);
-extern void              genm_reset_state(_GenmParseState *p);
+extern void              genm_reset_parser(_GenmParseState *p);
+extern int               genm_free_parser(_GenmParseState *p);
 {% for p in pub_protos %}extern {{p}}
 {% endfor %}
 
