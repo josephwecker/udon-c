@@ -4,7 +4,7 @@
 
 void emit_xml(void *u) {
     printf("<?xml version=\"1.0\"?>");
-    UdonFullNode *root = (UdonFullNode *)u;
+    UdonNode *root = (UdonNode *)u;
     UdonNode *curr_child = root->children;
     UdonList *curr_class = root->classes;
     // Temporary- just testing some basic parser functionality

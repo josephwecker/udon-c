@@ -7,8 +7,6 @@
   |node_type     NodeType
   |source_line   Z+
   |source_column Z+
-
-|struct[FullNode < Node]
   |children      Node
   |name          STRING
   |id            STRING
@@ -17,11 +15,11 @@
 
 |entry-point /node:child-shortcut
 
-|function[node:FullNode]  | inl=1 | ibase=COL | ipar=COL-1
+|function[node:Node]  | inl=1 | ibase=COL | ipar=COL-1
   |state[:init]
-    |eof                  | ((UdonNode *)S).node_type=BLANK        |return S
-    |c[\n]    |.value1    | -> | ((UdonNode *)S).node_type=VALUE   |>> :value
-    |c[ \t]   |.value2    | -> | ((UdonNode *)S).node_type=VALUE   |>> :value
+    |eof                  | S.node_type=BLANK        |return S
+    |c[\n]    |.value1    | -> | S.node_type=VALUE   |>> :value
+    |c[ \t]   |.value2    | -> | S.node_type=VALUE   |>> :value
     |c[:]     |.attr      | ->                                     |>> :attribute
     |c[<LBR>] |.id        |                                        |>> :identity.id
     |c[.]     |.class     |                                        |>> :identity.class
@@ -34,7 +32,7 @@
     |c[<LBR>] |.id        | S.id=/id                               |>>
     |c[.]     |.class     | ->| S.classes <<< /label               |>>
     |default  |.child     |                                        |>> :child
-  |state[:child-shortcut] | ((UdonNode *)S).node_type=ROOT         |>> :child
+  |state[:child-shortcut] | S.node_type=ROOT         |>> :child
   |state[:child]
     |c[ \t]   |.lead      | ->                                     |>>
     |c[\n]    |.nl        |if[!inl] | C<</node |endif | inl=0      |>>

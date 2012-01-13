@@ -4,7 +4,8 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * re-fix up 2xml stuff w/ errors, return states, etc.
+#   * automatic 'defaults' with errors where none specified so there are no
+#     unexpected code paths (esp. after states get reorganized).
 #
 #   (Extra credit)
 #   * ..._free_parser implementation (for real)
@@ -323,8 +324,10 @@ class GMStruct < GMGenericChild
       if ['struct', 'enum', 'function', 'parser', 'entry-point'].include?(c[0])
         return c
       else
-        @body << [c[0], gm.type_map(c[2])]
-        @body << ['_' + c[0] + '__tail', gm.type_map(c[2])] if gm.listy.include?(c[2])
+        gmt = gm.type_map(c[2])
+        gmt = 'struct ' + gmt if c[2] == @name
+        @body << [c[0], gmt]
+        @body << ['_' + c[0] + '__tail', gmt] if gm.listy.include?(c[2])
         c = yield
       end
     end

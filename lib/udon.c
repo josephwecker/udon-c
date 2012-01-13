@@ -109,13 +109,13 @@ struct _UdonParseState {
 
 /* --- Private prototypes --- */
 
-static inline UdonFullNode * _udon_node(_UdonParseState *p);
+static inline UdonNode * _udon_node(_UdonParseState *p);
 static inline UdonString * _udon_label(_UdonParseState *p);
-static inline UdonFullNode * _udon_node__s_child_shortcut(_UdonParseState *p);
+static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p);
 static inline UdonString * _udon_label__s_delim(_UdonParseState *p);
 static inline void * _udon_id(_UdonParseState *p);
 static inline void * _udon_comment(_UdonParseState *p);
-static inline UdonFullNode * _new_udon_full_node(_UdonParseState *p);
+static inline UdonNode * _new_udon_node(_UdonParseState *p);
 static inline UdonList * _new_udon_list(_UdonParseState *p);
 static inline UdonString * _new_udon_string(_UdonParseState *p);
 
@@ -320,26 +320,26 @@ int udon_parse(_UdonParseState *p) {
 }
 
 
-static inline UdonFullNode * _udon_node(_UdonParseState *p) {
-    UdonFullNode * self_res      = _new_udon_full_node(p);
+static inline UdonNode * _udon_node(_UdonParseState *p) {
+    UdonNode * self_res          = _new_udon_node(p);
     uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
     s_init:
         if(_UDON_EOF) {
-            ((UdonNode *)self_res)->node_type = UDON_BLANK;
+            self_res->node_type  = UDON_BLANK;
             return self_res;
         } else {
           _inner_s_init:
             switch(*(p->curr)) {
                 case '\n':  /*-- init.value1 ---*/
                     _UDON_ADVANCE_LINE();
-                    ((UdonNode *)self_res)->node_type = UDON_VALUE;
+                    self_res->node_type = UDON_VALUE;
                     goto s_value;
                 case ' ':
                 case '\t':  /*-- init.value2 ---*/
                     _UDON_ADVANCE_COL();
-                    ((UdonNode *)self_res)->node_type = UDON_VALUE;
+                    self_res->node_type = UDON_VALUE;
                     goto s_value;
                 case ':':   /*-- init.attr -----*/
                     _UDON_ADVANCE_COL();
@@ -388,7 +388,7 @@ static inline UdonFullNode * _udon_node(_UdonParseState *p) {
             }
         }
     s_child_shortcut:
-        ((UdonNode *)self_res)->node_type = UDON_ROOT;
+        self_res->node_type      = UDON_ROOT;
         goto _inner_s_child;
     s_child:
         if(_UDON_EOF) goto _eof;
@@ -486,13 +486,13 @@ static inline UdonString * _udon_label(_UdonParseState *p) {
 }
 
 
-static inline UdonFullNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
-    UdonFullNode * self_res      = _new_udon_full_node(p);
+static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
+    UdonNode * self_res          = _new_udon_node(p);
     uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
     s_child_shortcut:
-        ((UdonNode *)self_res)->node_type = UDON_ROOT;
+        self_res->node_type      = UDON_ROOT;
         goto _inner_s_child;
     s_child:
         if(_UDON_EOF) goto _eof;
@@ -527,19 +527,19 @@ static inline UdonFullNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
         }
     s_init:
         if(_UDON_EOF) {
-            ((UdonNode *)self_res)->node_type = UDON_BLANK;
+            self_res->node_type  = UDON_BLANK;
             return self_res;
         } else {
           _inner_s_init:
             switch(*(p->curr)) {
                 case '\n':  /*-- init.value1 ---*/
                     _UDON_ADVANCE_LINE();
-                    ((UdonNode *)self_res)->node_type = UDON_VALUE;
+                    self_res->node_type = UDON_VALUE;
                     goto s_value;
                 case ' ':
                 case '\t':  /*-- init.value2 ---*/
                     _UDON_ADVANCE_COL();
-                    ((UdonNode *)self_res)->node_type = UDON_VALUE;
+                    self_res->node_type = UDON_VALUE;
                     goto s_value;
                 case ':':   /*-- init.attr -----*/
                     _UDON_ADVANCE_COL();
@@ -664,9 +664,9 @@ static inline void * _udon_comment(_UdonParseState *p) {
 }
 
 
-static inline UdonFullNode * _new_udon_full_node(_UdonParseState *p) {
-    UdonFullNode * res           = (UdonFullNode *)udon_malloc(sizeof(UdonFullNode));
-    if(!res) udon_memory_err("Memory allocation failed for FullNode.");
+static inline UdonNode * _new_udon_node(_UdonParseState *p) {
+    UdonNode * res               = (UdonNode *)udon_malloc(sizeof(UdonNode));
+    if(!res) udon_memory_err("Memory allocation failed for Node.");
     return res;
 }
 

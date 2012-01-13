@@ -113,22 +113,15 @@ struct UdonNode {
     UdonNodeType                 node_type;
     uint64_t                     source_line;
     uint64_t                     source_column;
-};
-typedef struct UdonNode          UdonNode;
-
-
-struct UdonFullNode {
-    UdonNode                     _base;
-
-    UdonNode *                   children;
-    UdonNode *                   _children__tail;
+    struct UdonNode *            children;
+    struct UdonNode *            _children__tail;
     UdonString *                 name;
     UdonString *                 id;
     UdonList *                   classes;
     UdonList *                   _classes__tail;
     UdonDict *                   attributes;
 };
-typedef struct UdonFullNode      UdonFullNode;
+typedef struct UdonNode          UdonNode;
 
 
 
