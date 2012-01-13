@@ -8,4 +8,5 @@ AC_CONFIG_SRCDIR([lib/udon.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile])
 AC_FUNC_MALLOC
+CFLAGS='-O3 -Wall -W -Winline -Wno-unused-label'
 AC_OUTPUT

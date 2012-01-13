@@ -12,6 +12,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <err.h>
+#include <stdio.h>
+#include <unistd.h>
 {% if use_gmdict %}#include <string.h>{% endif %}
 
 #define _GENM_EOF p->curr == p->end
@@ -38,7 +40,7 @@ struct GenmError genm_global_error = {
     genm_global_error.parser_file = __FILE__;\
     genm_global_error.parser_line = __LINE__;\
     genm_global_error.parser_function = __FUNCTION__;\
-    vsnprintf(genm_global_error.message, 255, (msg), ##__VA_ARGS__);\
+    snprintf(genm_global_error.message, 255, (msg), ##__VA_ARGS__);\
 }
 
 #define _genm_err_set_parser(ecode, msg, ...) {\
@@ -49,7 +51,7 @@ struct GenmError genm_global_error = {
     p->_public.error.parser_file = __FILE__;\
     p->_public.error.parser_line = __LINE__;\
     p->_public.error.parser_function = __FUNCTION__;\
-    vsnprintf(p->_public.error.message, 255, (msg), ##__VA_ARGS__);\
+    snprintf(p->_public.error.message, 255, (msg), ##__VA_ARGS__);\
 }
 
 #define genm_err(ecode,msg,...) {\
@@ -175,7 +177,8 @@ void genm_reset_state(_GenmParseState *p) {
 }
 
 int genm_free_parser(_GenmParseState *p) {
-
+    genm_free(p->_public.source_buffer, p->_public.source_size);
+    return 0;
 }
 /*    size_t  bytes_read;
     int     fd;
@@ -309,7 +312,6 @@ void * genm_dict_value_for(GenmDict *dict, GenmString *key) {
     uint64_t idx;
     uint64_t hval = key->length;
     uint64_t count = hval;
-    void *   retval;
     while(count-- > 0) {
         hval <<= 4;
         hval += key->start[count];

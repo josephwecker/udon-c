@@ -1,3 +1,11 @@
+[2012-01-12 | 36d9e63 | <jwecker@justin.tv>]  Fixed error message usage. Seems to work great(!) test successful as well (temporarily change entry-point to just /node for it to work)
+
+[2012-01-12 | 6922035 | <jwecker@justin.tv>]  Last of the unimplemented macros... completely compiles now but untested.
+
+[2012-01-12 | 52706c5 | <jwecker@justin.tv>]  Conform error struct to naming conventions
+
+[2012-01-12 | 896877e | <jwecker@justin.tv>]  Changed error mechanism, set up internal error reporting, fixed parser-state resetting.
+
 [2012-01-12 | a575afc | <joseph.wecker@gmail.com>]  Simplifying templates a bit, fixing interface for errors and file loading. In progress. Non-working commit.
 
 [2012-01-11 | 42efd5b | <jwecker@justin.tv>]  Reattached the init_from_file functionality w/ appropriate tweeks.

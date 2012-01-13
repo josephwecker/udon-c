@@ -115,7 +115,7 @@ typedef struct _GenmParseState _GenmParseState;
  */
 struct GenmParseState {
     /* --- Source --- */
-    uint8_t *        source_buffer;
+    char *           source_buffer;
     size_t           source_size;
     char *           source_origin;  /* Filename, etc. Optional. */
 
@@ -126,13 +126,12 @@ struct GenmParseState {
 };
 typedef struct GenmParseState GenmParseState;
 
-
-extern _GenmParseState *genm_init_from_file(char *filename);
-extern inline GenmParseState *genm_state(_GenmParseState *p);
-extern void genm_reset_state(_GenmParseState *p);
-
-{% for p in pub_protos %}
-extern {{p}}{% endfor %}
+/* --- MAIN INTERFACE --- */
+extern _GenmParseState  *genm_init_from_file(char *filename);
+extern GenmParseState   *genm_state(_GenmParseState *p);
+extern void              genm_reset_state(_GenmParseState *p);
+{% for p in pub_protos %}extern {{p}}
+{% endfor %}
 
 #ifdef __cplusplus
 }

@@ -73,6 +73,7 @@ class GM
       elsif c[0] == 'entry-point'
         f = GMFunction.new(self, "#{@name}_parse", 'int')
         f.body << GMCommand.new(f, "int errval = setjmp(p->err_jmpbuf)")
+        f.body << GMCommand.new(f, "p->jmpbuf_set = 1")
         f.body << GMCommand.new(f, "if(errval) return errval")
         f.body << GMCommand.new(f, "p->_public.result = (void *)#{parse_location(c[2])[1]}")
         f.body << GMCommand.new(f, "return 0")

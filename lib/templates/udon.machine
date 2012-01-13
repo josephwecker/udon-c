@@ -19,9 +19,9 @@
 
 |function[node:FullNode]  | inl=1 | ibase=COL | ipar=COL-1
   |state[:init]
-    |eof                  | ((UdonNode *)S).node_type=BLANK                      |return S
-    |c[\n]    |.value1    | -> | ((UdonNode *)S).node_type=VALUE                 |>> :value
-    |c[ \t]   |.value2    | -> | ((UdonNode *)S).node_type=VALUE                 |>> :value
+    |eof                  | ((UdonNode *)S).node_type=BLANK        |return S
+    |c[\n]    |.value1    | -> | ((UdonNode *)S).node_type=VALUE   |>> :value
+    |c[ \t]   |.value2    | -> | ((UdonNode *)S).node_type=VALUE   |>> :value
     |c[:]     |.attr      | ->                                     |>> :attribute
     |c[<LBR>] |.id        |                                        |>> :identity.id
     |c[.]     |.class     |                                        |>> :identity.class
@@ -34,10 +34,10 @@
     |c[<LBR>] |.id        | S.id=/id                               |>>
     |c[.]     |.class     | ->| S.classes <<< /label               |>>
     |default  |.child     |                                        |>> :child
-  |state[:child-shortcut] | ((UdonNode *)S).node_type=ROOT                       |>> :child
+  |state[:child-shortcut] | ((UdonNode *)S).node_type=ROOT         |>> :child
   |state[:child]
     |c[ \t]   |.lead      | ->                                     |>>
-    |c[\n]    |.nl        |if[!inl] | C<</node |endif | inl=0       |>>
+    |c[\n]    |.nl        |if[!inl] | C<</node |endif | inl=0      |>>
     |c[#]     |.comment   | -> | /comment                          |>>
 # TODO: comment does advanced skipping
 
@@ -49,7 +49,7 @@
     |c[ \t\n<LBR><PIPE>.!]|.done| MARK_END                         |return S
     |default  |.collect   | ->                                     |>>
   |state[:delim]
-    #|eof      |err Unexpected end of file - missing closing ')'
+    |eof      |err Unexpected end of file - missing closing ')'
     |c[(]     |.nest      | -> | lvl+=1                            |>>
     |c[)]     |.unnest    | -> | lvl-=1
       |if[lvl==0]                                                  |return S

@@ -12,6 +12,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <err.h>
+#include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 
 #define _UDON_EOF p->curr == p->end
@@ -38,7 +40,7 @@ struct UdonError udon_global_error = {
     udon_global_error.parser_file = __FILE__;\
     udon_global_error.parser_line = __LINE__;\
     udon_global_error.parser_function = __FUNCTION__;\
-    vsnprintf(udon_global_error.message, 255, (msg), ##__VA_ARGS__);\
+    snprintf(udon_global_error.message, 255, (msg), ##__VA_ARGS__);\
 }
 
 #define _udon_err_set_parser(ecode, msg, ...) {\
@@ -49,7 +51,7 @@ struct UdonError udon_global_error = {
     p->_public.error.parser_file = __FILE__;\
     p->_public.error.parser_line = __LINE__;\
     p->_public.error.parser_function = __FUNCTION__;\
-    vsnprintf(p->_public.error.message, 255, (msg), ##__VA_ARGS__);\
+    snprintf(p->_public.error.message, 255, (msg), ##__VA_ARGS__);\
 }
 
 #define udon_err(ecode,msg,...) {\
@@ -183,7 +185,8 @@ void udon_reset_state(_UdonParseState *p) {
 }
 
 int udon_free_parser(_UdonParseState *p) {
-
+    udon_free(p->_public.source_buffer, p->_public.source_size);
+    return 0;
 }
 /*    size_t  bytes_read;
     int     fd;
@@ -317,7 +320,6 @@ void * udon_dict_value_for(UdonDict *dict, UdonString *key) {
     uint64_t idx;
     uint64_t hval = key->length;
     uint64_t count = hval;
-    void *   retval;
     while(count-- > 0) {
         hval <<= 4;
         hval += key->start[count];
@@ -348,6 +350,7 @@ void * udon_dict_value_for(UdonDict *dict, UdonString *key) {
 
 int udon_parse(_UdonParseState *p) {
     int errval                   = setjmp(p->err_jmpbuf);
+    p->jmpbuf_set                = 1;
     if(errval) return errval;
     p->_public.result            = (void *)_udon_node__s_child_shortcut(p);
     return 0;
@@ -491,8 +494,9 @@ static inline UdonString * _udon_label(_UdonParseState *p) {
             }
         }
     s_delim:
-        if(_UDON_EOF) goto _eof;
-        else {
+        if(_UDON_EOF) {
+            udon_data_err("Unexpected end of file - missing closing ')'");
+        } else {
           _inner_s_delim:
             switch(*(p->curr)) {
                 case '(':   /*-- delim.nest ----*/
@@ -636,8 +640,9 @@ static inline UdonString * _udon_label__s_delim(_UdonParseState *p) {
     uint64_t lvl                 = 0;
     self_res->start              = p->curr;
     s_delim:
-        if(_UDON_EOF) goto _eof;
-        else {
+        if(_UDON_EOF) {
+            udon_data_err("Unexpected end of file - missing closing ')'");
+        } else {
           _inner_s_delim:
             switch(*(p->curr)) {
                 case '(':   /*-- delim.nest ----*/
