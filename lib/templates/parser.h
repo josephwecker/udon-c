@@ -34,9 +34,10 @@ extern "C" {
 #define GENM_DATA_ERR       EX_DATAERR
 
 
-enum GenmTypes {
+enum GenmListableTypes {
     GENM_STRING_TYPE,
-    GENM_
+    {% for t in listy %}GENM_{{t|up}}_TYPE,
+    {% endfor %}
 };
 
 // TODO: YOU ARE HERE: allow random structs to be link-listed together - give
@@ -66,24 +67,24 @@ typedef struct GenmError GenmError;
 extern GenmError genm_global_error;
 
 
+/* --- Linked List base --- */
+struct GenmList {
+    GenmListableTypes listable_type;
+    struct GenmList * next;
+};
+typedef struct GenmList GenmList;
+
 /* --- String ---
  * Not null-terminated and by default simply a pointer into the original data,
  * so you may want to allocate a copy of it and null-terminate it depending on
  * how you want to use it.
  */
 struct GenmString {
-    char * start;
+    GenmList ll;
+    char *   start;
     uint64_t length;
 };
 typedef struct GenmString GenmString;
-
-/* --- Linked List --- */
-struct GenmList {
-    unsigned int GenmType
-    struct GenmList * next;
-    void * v;
-};
-typedef struct GenmList GenmList;
 
 
 {% if use_gmdict %}/* --- Dict / Hash table --- */

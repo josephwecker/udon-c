@@ -1,9 +1,15 @@
 |parser udon
 
+TODO:
+ - quick syntax highlight for new genmachine syntax.
+ - catch this up with older udon*.machine drafts.
+ - fix genmachine typing, esp. wrt linked lists.
+ - finish genmachine as per everything needed here.
+
 |enum[NodeType]
   |ROOT |BLANK |VALUE |FULL
 
-|struct[Node < LIST]
+|struct[Node]
   |node_type     NodeType
   |source_line   Z+
   |source_column Z+
@@ -32,14 +38,13 @@
   |state[:identity]
     |c[ \t]   |.lead      | ->                                     |>>
     |c[<LBR>] |.id        | S.id=/id                               |>>
-    |c[.]     |.class     | ->| S.classes <<< /label               |>>
+    |c[.]     |.class     | ->| S.classes << /label                |>>
     |default  |.child     |                                        |>> :child
   |state[:child-shortcut] | S.node_type=ROOT | inl = 0             |>> :child
   |state[:child]
     |c[ \t]   |.lead      | ->                                     |>>
     |c[\n]    |.nl        |if[!inl] | C << /node |endif | inl=0    |>>
     |c[#]     |.comment   | -> | /comment                          |>>
-                          # TODO: comment does advanced skipping
     |default  |.text      |if[COL <= ipar]                         |return S
                           |endif                                   |>> :child2
   |state[:child2]
@@ -68,3 +73,5 @@
       |endif
     |c[\n]    |.collect1  | ->                                     |>>
     |default  |.collect2  | ->                                     |>>
+
+|function[comment]        | ibase = COL | ipar = COL - 1

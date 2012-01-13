@@ -4,6 +4,8 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
+#   * Stablize types, structures, listability, member referencing, inheritance,
+#     strings and lists.
 #   * automatic 'defaults' with errors where none specified so there are no
 #     unexpected code paths (esp. after states get reorganized).
 #
@@ -337,7 +339,12 @@ class GMStruct < GMGenericChild
     n =  gm.type_map(@name, false)
     r =  dent(ind)+"struct #{n} {\n"
     i = COL_2 - ((ind+1)*INDENTS)
-    r += dent(ind+1)+gm.type_map(@struct_parent,false).ljust(i,' ') + " _base;\n\n" if @struct_parent
+    if @struct_parent
+      r += dent(ind+1)+gm.type_map(@struct_parent,false).ljust(i,' ') + " _base;\n\n"
+    else
+      r += dent(ind+1)+gm.type_map('LIST').ljust(i,' ') + "ll;\n\n"
+    end
+
     r += @body.map{|b| dent(ind+1)+b[1].ljust(i,' ') + ' ' + b[0]}.join(";\n")
     r += ";\n"+dent(ind)+"};\n"
     r += dent(ind)+"typedef struct #{n}".ljust(i+INDENTS,' ')+" #{n};\n"
@@ -849,7 +856,8 @@ context = {
   'use_gmstring' => gm.use_gmstring,
   'use_gmlist'   => gm.use_gmlist,
   'use_gmdict'   => gm.use_gmdict,
-  'parser'       => gm.name
+  'parser'       => gm.name,
+  'listy'        => gm.listy
 }
 
 

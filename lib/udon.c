@@ -110,11 +110,15 @@ struct _UdonParseState {
 /* --- Private prototypes --- */
 
 static inline UdonNode * _udon_node(_UdonParseState *p);
+static inline UdonString * _udon_value(_UdonParseState *p);
 static inline UdonString * _udon_label(_UdonParseState *p);
 static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p);
+static inline void * _udon_value_node(_UdonParseState *p);
 static inline UdonString * _udon_label__s_delim(_UdonParseState *p);
 static inline void * _udon_id(_UdonParseState *p);
 static inline void * _udon_comment(_UdonParseState *p);
+static inline void * _udon_value_node(_UdonParseState *p);
+static inline void * _udon_data_node(_UdonParseState *p);
 static inline UdonNode * _new_udon_node(_UdonParseState *p);
 static inline UdonList * _new_udon_list(_UdonParseState *p);
 static inline UdonString * _new_udon_string(_UdonParseState *p);
@@ -334,13 +338,13 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
             switch(*(p->curr)) {
                 case '\n':  /*-- init.value1 ---*/
                     _UDON_ADVANCE_LINE();
-                    self_res->node_type = UDON_VALUE;
-                    goto s_value;
+                    self_res->node_type = UDON_BLANK;
+                    goto s_child;
                 case ' ':
                 case '\t':  /*-- init.value2 ---*/
                     _UDON_ADVANCE_COL();
-                    self_res->node_type = UDON_VALUE;
-                    goto s_value;
+                    self_res     = _udon_value_node(p);
+                    return self_res;
                 case ':':   /*-- init.attr -----*/
                     _UDON_ADVANCE_COL();
                     goto s_attribute;
@@ -349,7 +353,7 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
                 case '(':   /*-- init.delim ----*/
                     self_res->name = _udon_label__s_delim(p);
                     goto s_identity;
-                case '|':   /*-- init.child ----*/   goto s_child__node;
+                case '|':   /*-- init.child ----*/   goto s_child2__node;
                 case '{':   /*-- init.embed ----*/   udon_data_err("Embedded nodes are not yet supported");
                 default:    /*-- init.name -----*/
                     self_res->name = _udon_label(p);
@@ -389,6 +393,7 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
         }
     s_child_shortcut:
         self_res->node_type      = UDON_ROOT;
+        inl                      = 0;
         goto _inner_s_child;
     s_child:
         if(_UDON_EOF) goto _eof;
@@ -419,14 +424,86 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
                     _UDON_ADVANCE_COL();
                     _udon_comment(p);
                     goto s_child;
+                default:    /*-- child.text ----*/
+                    if(p->column<=ipar) return self_res;
+                    goto _inner_s_child2;
             }
         }
-    s_value:
-        udon_data_err("Parser for 'value' in 'node' not yet implemented.");
+    s_child2:
+        if(_UDON_EOF) goto _eof;
+        else {
+          _inner_s_child2:
+            switch(*(p->curr)) {
+                case '|':   /*-- child2.node ---*/
+                  s_child2__node:
+                    _UDON_ADVANCE_COL();
+                    {
+                        UdonList * _item  = (UdonList *)(_udon_node(p));
+                        UdonList * *_acc_head = (UdonList **) &(self_res->children);
+                        UdonList * *_acc_tail = (UdonList **) &(self_res->_children__tail);
+                        if(*_acc_tail == NULL) {
+                            *_acc_head = *_acc_tail = _item;
+                        } else {
+                            (*_acc_tail)->next = _item;
+                            *_acc_tail = _item;
+                        }
+                    }
+                    goto s_child;
+                case ':':   /*-- child2.attribute */
+                    _UDON_ADVANCE_COL();
+                    goto s_attribute;
+                default:    /*-- child2.value --*/
+                    if(inl) {
+                        {
+                            UdonList * _item  = (UdonList *)(_udon_value_node(p));
+                            UdonList * *_acc_head = (UdonList **) &(self_res->children);
+                            UdonList * *_acc_tail = (UdonList **) &(self_res->_children__tail);
+                            if(*_acc_tail == NULL) {
+                                *_acc_head = *_acc_tail = _item;
+                            } else {
+                                (*_acc_tail)->next = _item;
+                                *_acc_tail = _item;
+                            }
+                        }
+                        goto s_child;
+                    }
+                    {
+                        UdonList * _item  = (UdonList *)(_udon_data_node(p));
+                        UdonList * *_acc_head = (UdonList **) &(self_res->children);
+                        UdonList * *_acc_tail = (UdonList **) &(self_res->_children__tail);
+                        if(*_acc_tail == NULL) {
+                            *_acc_head = *_acc_tail = _item;
+                        } else {
+                            (*_acc_tail)->next = _item;
+                            *_acc_tail = _item;
+                        }
+                    }
+                    goto s_child;
+            }
+        }
     s_attribute:
         udon_data_err("Parser for 'attribute' in 'node' not yet implemented.");
-    s_child__node:
-        udon_data_err("Parser for 'child' in 'node' (substate 'node') not yet implemented.");
+    _eof:
+        return self_res;
+}
+
+
+static inline UdonString * _udon_value(_UdonParseState *p) {
+    UdonString * self_res        = _new_udon_string(p);
+    uint64_t ibase               = p->column;
+    uint64_t ipar                = p->column - 1;
+    self_res->start              = p->curr;
+    s_main:
+        self_res->node_type      = UDON_VALUE;
+        if(_UDON_EOF) goto _eof;
+        else {
+          _inner_s_main:
+            switch(*(p->curr)) {
+                case ' ':
+                case '\t':  /*-- main.space ----*/
+                    _UDON_ADVANCE_COL();
+            }
+        }
     _eof:
         return self_res;
 }
@@ -493,6 +570,7 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
     uint64_t ipar                = p->column-1;
     s_child_shortcut:
         self_res->node_type      = UDON_ROOT;
+        inl                      = 0;
         goto _inner_s_child;
     s_child:
         if(_UDON_EOF) goto _eof;
@@ -523,6 +601,61 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                     _UDON_ADVANCE_COL();
                     _udon_comment(p);
                     goto s_child;
+                default:    /*-- child.text ----*/
+                    if(p->column<=ipar) return self_res;
+                    goto _inner_s_child2;
+            }
+        }
+    s_child2:
+        if(_UDON_EOF) goto _eof;
+        else {
+          _inner_s_child2:
+            switch(*(p->curr)) {
+                case '|':   /*-- child2.node ---*/
+                  s_child2__node:
+                    _UDON_ADVANCE_COL();
+                    {
+                        UdonList * _item  = (UdonList *)(_udon_node(p));
+                        UdonList * *_acc_head = (UdonList **) &(self_res->children);
+                        UdonList * *_acc_tail = (UdonList **) &(self_res->_children__tail);
+                        if(*_acc_tail == NULL) {
+                            *_acc_head = *_acc_tail = _item;
+                        } else {
+                            (*_acc_tail)->next = _item;
+                            *_acc_tail = _item;
+                        }
+                    }
+                    goto s_child;
+                case ':':   /*-- child2.attribute */
+                    _UDON_ADVANCE_COL();
+                    goto s_attribute;
+                default:    /*-- child2.value --*/
+                    if(inl) {
+                        {
+                            UdonList * _item  = (UdonList *)(_udon_value_node(p));
+                            UdonList * *_acc_head = (UdonList **) &(self_res->children);
+                            UdonList * *_acc_tail = (UdonList **) &(self_res->_children__tail);
+                            if(*_acc_tail == NULL) {
+                                *_acc_head = *_acc_tail = _item;
+                            } else {
+                                (*_acc_tail)->next = _item;
+                                *_acc_tail = _item;
+                            }
+                        }
+                        goto s_child;
+                    }
+                    {
+                        UdonList * _item  = (UdonList *)(_udon_data_node(p));
+                        UdonList * *_acc_head = (UdonList **) &(self_res->children);
+                        UdonList * *_acc_tail = (UdonList **) &(self_res->_children__tail);
+                        if(*_acc_tail == NULL) {
+                            *_acc_head = *_acc_tail = _item;
+                        } else {
+                            (*_acc_tail)->next = _item;
+                            *_acc_tail = _item;
+                        }
+                    }
+                    goto s_child;
             }
         }
     s_init:
@@ -534,13 +667,13 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
             switch(*(p->curr)) {
                 case '\n':  /*-- init.value1 ---*/
                     _UDON_ADVANCE_LINE();
-                    self_res->node_type = UDON_VALUE;
-                    goto s_value;
+                    self_res->node_type = UDON_BLANK;
+                    goto s_child;
                 case ' ':
                 case '\t':  /*-- init.value2 ---*/
                     _UDON_ADVANCE_COL();
-                    self_res->node_type = UDON_VALUE;
-                    goto s_value;
+                    self_res     = _udon_value_node(p);
+                    return self_res;
                 case ':':   /*-- init.attr -----*/
                     _UDON_ADVANCE_COL();
                     goto s_attribute;
@@ -549,7 +682,7 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                 case '(':   /*-- init.delim ----*/
                     self_res->name = _udon_label__s_delim(p);
                     goto s_identity;
-                case '|':   /*-- init.child ----*/   goto s_child__node;
+                case '|':   /*-- init.child ----*/   goto s_child2__node;
                 case '{':   /*-- init.embed ----*/   udon_data_err("Embedded nodes are not yet supported");
                 default:    /*-- init.name -----*/
                     self_res->name = _udon_label(p);
@@ -587,14 +720,16 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                 default:    /*-- identity.child */   goto _inner_s_child;
             }
         }
-    s_value:
-        udon_data_err("Parser for 'value' in 'node__s_child_shortcut' not yet implemented.");
     s_attribute:
         udon_data_err("Parser for 'attribute' in 'node__s_child_shortcut' not yet implemented.");
-    s_child__node:
-        udon_data_err("Parser for 'child' in 'node__s_child_shortcut' (substate 'node') not yet implemented.");
     _eof:
         return self_res;
+}
+
+
+static inline void * _udon_value_node(_UdonParseState *p) {
+    udon_data_err("Parser for 'value_node' not yet implemented.");
+    return NULL;
 }
 
 
@@ -660,6 +795,18 @@ static inline void * _udon_id(_UdonParseState *p) {
 
 static inline void * _udon_comment(_UdonParseState *p) {
     udon_data_err("Parser for 'comment' not yet implemented.");
+    return NULL;
+}
+
+
+static inline void * _udon_value_node(_UdonParseState *p) {
+    udon_data_err("Parser for 'value_node' not yet implemented.");
+    return NULL;
+}
+
+
+static inline void * _udon_data_node(_UdonParseState *p) {
+    udon_data_err("Parser for 'data_node' not yet implemented.");
     return NULL;
 }
 

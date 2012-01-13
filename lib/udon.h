@@ -33,6 +33,19 @@ extern "C" {
 #define UDON_FILE_READ_ERR  EX_IOERR
 #define UDON_DATA_ERR       EX_DATAERR
 
+
+enum UdonTypes {
+    UDON_STRING_TYPE,
+    UDON_LIST_TYPE,
+    UDON_NODE_TYPE,
+    
+};
+
+// TODO: YOU ARE HERE: allow random structs to be link-listed together - give
+// them a byte at the top of the struct that indicates the type. Allow strings
+// to be link-listed- (so instead of v * in the linked list, it's just the
+// string fields - get rid of v for all linked stuff).
+
 /* --- Global parser error state ---
  * These get created in the parser implementation file as a backup. Feel free
  * to ignore in multithreaded environments etc. and use the error members of
@@ -55,8 +68,6 @@ typedef struct UdonError UdonError;
 extern UdonError udon_global_error;
 
 
-#define udon_error_string
-
 /* --- String ---
  * Not null-terminated and by default simply a pointer into the original data,
  * so you may want to allocate a copy of it and null-terminate it depending on
@@ -68,11 +79,11 @@ struct UdonString {
 };
 typedef struct UdonString UdonString;
 
-
 /* --- Linked List --- */
 struct UdonList {
-    void * v;
+    unsigned int UdonType
     struct UdonList * next;
+    void * v;
 };
 typedef struct UdonList UdonList;
 
@@ -113,13 +124,14 @@ struct UdonNode {
     UdonNodeType                 node_type;
     uint64_t                     source_line;
     uint64_t                     source_column;
-    struct UdonNode *            children;
-    struct UdonNode *            _children__tail;
     UdonString *                 name;
     UdonString *                 id;
+    UdonString *                 value;
     UdonList *                   classes;
     UdonList *                   _classes__tail;
     UdonDict *                   attributes;
+    struct UdonNode *            children;
+    struct UdonNode *            _children__tail;
 };
 typedef struct UdonNode          UdonNode;
 

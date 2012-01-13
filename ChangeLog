@@ -1,3 +1,11 @@
+[2012-01-12 | dea328e | <jwecker@justin.tv>]  more statemachine definition for values and starting to generalize linked lists more.
+
+[2012-01-12 | 799266a | <jwecker@justin.tv>]  Simplified udon node structure
+
+[2012-01-12 | 361c727 | <jwecker@justin.tv>]  exposed the 'free' implementation and some cleanup of older cruft.
+
+[2012-01-12 | 6faf254 | <jwecker@justin.tv>]  Lots of polish, turned on a lot of warnings, and various fixes.
+
 [2012-01-12 | 36d9e63 | <jwecker@justin.tv>]  Fixed error message usage. Seems to work great(!) test successful as well (temporarily change entry-point to just /node for it to work)
 
 [2012-01-12 | 6922035 | <jwecker@justin.tv>]  Last of the unimplemented macros... completely compiles now but untested.
