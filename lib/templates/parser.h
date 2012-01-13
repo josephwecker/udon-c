@@ -33,6 +33,17 @@ extern "C" {
 #define GENM_FILE_READ_ERR  EX_IOERR
 #define GENM_DATA_ERR       EX_DATAERR
 
+
+enum GenmTypes {
+    GENM_STRING_TYPE,
+    GENM_
+};
+
+// TODO: YOU ARE HERE: allow random structs to be link-listed together - give
+// them a byte at the top of the struct that indicates the type. Allow strings
+// to be link-listed- (so instead of v * in the linked list, it's just the
+// string fields - get rid of v for all linked stuff).
+
 /* --- Global parser error state ---
  * These get created in the parser implementation file as a backup. Feel free
  * to ignore in multithreaded environments etc. and use the error members of
@@ -55,9 +66,7 @@ typedef struct GenmError GenmError;
 extern GenmError genm_global_error;
 
 
-#define genm_error_string
-
-{% if use_gmstring %}/* --- String ---
+/* --- String ---
  * Not null-terminated and by default simply a pointer into the original data,
  * so you may want to allocate a copy of it and null-terminate it depending on
  * how you want to use it.
@@ -67,15 +76,15 @@ struct GenmString {
     uint64_t length;
 };
 typedef struct GenmString GenmString;
-{% endif %}
 
-{% if use_gmlist %}/* --- Linked List --- */
+/* --- Linked List --- */
 struct GenmList {
-    void * v;
+    unsigned int GenmType
     struct GenmList * next;
+    void * v;
 };
 typedef struct GenmList GenmList;
-{% endif %}
+
 
 {% if use_gmdict %}/* --- Dict / Hash table --- */
 /* Opaque dictionary instance */
