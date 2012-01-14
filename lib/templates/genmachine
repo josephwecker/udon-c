@@ -767,6 +767,9 @@ class GMConditional < GMGenericChild
         @conds << [@curr_clause, @body]
         c = yield
         return c
+      elsif ['c','state','function','enum','struct','entry-point','parser','default','eof'].include?(c[0])
+        @conds << [@curr_clause, @body.dup]
+        return c
       else
         res, c, is_done = check_basic_commands(c, &src)
         c = unprocessed('if-statement',c,&src) unless res

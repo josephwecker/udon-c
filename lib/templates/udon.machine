@@ -1,15 +1,28 @@
 |parser udon
 
 TODO:
+
+ * Rules for appending string to linked list:
+   - ignore/don't-append if string is NULL
+   - ignore/don't-append if string's start is NULL
+   - MARK_END to current position if marked flag is not yet set.
+   - (have the "marked" flag a local variable instead of a member)
+
+ - "MARKED" boolean predicate macro
  - catch this up with older udon*.machine drafts.
  - support for void functions (e.g., block_comment)
  - support for advance-past and advance-to
  - support negative advance-to character classes (e.g.  ->[^ \t])
- - optional mark_end (only if not marked) with 'MARK_END?' (?)
+ - optional mark_end (only if not marked) with 'MARK_END?' (?) - or possibly
+   always check strings that are being appended to linked lists and mark_end
+   with the current position if they aren't already.
+ - adjust mark_end by some position (mark_end(-1))
  - each function also takes an optional "S" which it uses instead of creating one (see .value2)
  - make sure eof checks happen when there are no switch statements (e.g. block_comment)
  - fix genmachine typing, esp. wrt linked lists.
  - finish genmachine as per everything needed here.
+ - types automatically include a member field that indicates the function that
+   generated it.
 
 |enum[NodeType]
   |ROOT |BLANK |NORMAL
@@ -24,9 +37,12 @@ TODO:
   |attributes    DICT
   |children      Node
 
+|struct[Data]
+  |lines         LIST
+
 |entry-point /node:child-shortcut
 
-#-------------+-----------+----------------------------------------+--------------------
+#-------------+-----------+----------------------------------------+----------------
 |function[node:Node]  | inl=1 | ibase=COL | ipar=COL-1 | S.node_type=NORMAL
   |state[:init]
     |eof                  | S.node_type=BLANK                      |return S
@@ -58,25 +74,30 @@ TODO:
                           |endif   | C << /data_node               |>> :child
   # TODO: attribute
 
-#-------------+-----------+----------------------------------------+--------------------
-|function[value:STRING]   | ibase = COL | ipar = COL - 1 | MARK
-  |eof                    | MARK_END?                              |return S
+#-------------+-----------+----------------------------------------+----------------
+|function[value:Data]     | ibase = COL | ipar=COL-1 | a=STRING | MARK(a)
+  |eof                    | S.lines << a                           |return S
   |state[:main]
-    |c[ \t]   |.space     | ->                                     |>> :disamb
-    |c[\n]    |.newline   | MARK_END | ->                          |>> :newline
+    |c[ \t]   |.space     | MARK_END(a) | ->                       |>> :disamb
+    |c[\n]    |.newline   | MARK_END(a) | ->                       |>> :newline
     |default  |.collect   | ->                                     |>>
   |state[:disamb]
     |c[ \t]   |.space     | ->                                     |>>
     |c[\n]    |.newline   | ->                                     |>> :newline
     |c[#]     |.comment   | [\n]->                                 |>> :newline
-    |c[<PIPE>.!:] |.done  | MARK_END                               |return S
+    |c[<PIPE>.!:] |.done  | S.lines << a                           |return S
     |default  |.collect   | ->                                     |>> :main
-  |state[:newline]
+  |state[:newline]        | S.lines << a
+  |state[:linestart]
+    |if[COL > ibase]      | a = STRING | MARK(a)                   |>> :main
     |c[ \t]   |.indent    | ->                                     |>>
     |c[\n]    |.newline   | ->                                     |>>
-    |c[#]     |.comment   |
+    |c[#]     |.comment   | [\n]->                                 |>>
+    |default  |.value
+      |if[COL <= ipar]                                             |return S
+      |else               | a = STRING | MARK(a)                   |>> :main
 
-#-------------+-----------+----------------------------------------+--------------------
+#-------------+-----------+----------------------------------------+----------------
 |function[label:STRING]   | lvl=0 | MARK
   |eof                    | MARK_END                               |return S
   |state[:init]
@@ -89,11 +110,10 @@ TODO:
     |c[)]     |.unnest    | -> | lvl-=1
       |if[lvl==0]                                                  |return S
       |else                                                        |>>
-      |endif
     |c[\n]    |.collect1  | ->                                     |>>
     |default  |.collect2  | ->                                     |>>
 
-#-------------+-----------+----------------------------------------+--------------------
+#-------------+-----------+----------------------------------------+----------------
 |function[block_comment]  | ibase = COL | ipar = COL - 1
   |state[:main]           | [\n]->                                 |>> :next
   |state[:next]           | ->[^ \t]

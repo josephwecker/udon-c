@@ -34,10 +34,9 @@ extern "C" {
 #define UDON_DATA_ERR       EX_DATAERR
 
 
-enum UdonTypes {
+enum UdonListableTypes {
     UDON_STRING_TYPE,
     UDON_LIST_TYPE,
-    UDON_NODE_TYPE,
     
 };
 
@@ -68,24 +67,24 @@ typedef struct UdonError UdonError;
 extern UdonError udon_global_error;
 
 
+/* --- Linked List base --- */
+struct UdonList {
+    UdonListableTypes listable_type;
+    struct UdonList * next;
+};
+typedef struct UdonList UdonList;
+
 /* --- String ---
  * Not null-terminated and by default simply a pointer into the original data,
  * so you may want to allocate a copy of it and null-terminate it depending on
  * how you want to use it.
  */
 struct UdonString {
-    char * start;
+    UdonList ll;
+    char *   start;
     uint64_t length;
 };
 typedef struct UdonString UdonString;
-
-/* --- Linked List --- */
-struct UdonList {
-    unsigned int UdonType
-    struct UdonList * next;
-    void * v;
-};
-typedef struct UdonList UdonList;
 
 
 /* --- Dict / Hash table --- */
@@ -109,8 +108,7 @@ extern void udon_dict_destroy(UdonDict *dict);
 enum UdonNodeType {
     UDON_ROOT,
     UDON_BLANK,
-    UDON_VALUE,
-    UDON_FULL
+    UDON_NORMAL
 };
 typedef enum UdonNodeType        UdonNodeType;
 
@@ -119,21 +117,28 @@ typedef enum UdonNodeType        UdonNodeType;
 
 /* --- Main return structures --- */
 struct UdonNode {
-    UdonList                     _base;
+    UdonList *                  ll;
 
     UdonNodeType                 node_type;
     uint64_t                     source_line;
     uint64_t                     source_column;
     UdonString *                 name;
     UdonString *                 id;
-    UdonString *                 value;
     UdonList *                   classes;
     UdonList *                   _classes__tail;
     UdonDict *                   attributes;
     struct UdonNode *            children;
-    struct UdonNode *            _children__tail;
 };
 typedef struct UdonNode          UdonNode;
+
+
+struct UdonData {
+    UdonList *                  ll;
+
+    UdonList *                   lines;
+    UdonList *                   _lines__tail;
+};
+typedef struct UdonData          UdonData;
 
 
 
