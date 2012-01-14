@@ -1,13 +1,18 @@
 |parser udon
 
 TODO:
- - quick syntax highlight for new genmachine syntax.
  - catch this up with older udon*.machine drafts.
+ - support for void functions (e.g., block_comment)
+ - support for advance-past and advance-to
+ - support negative advance-to character classes (e.g.  ->[^ \t])
+ - optional mark_end (only if not marked) with 'MARK_END?' (?)
+ - each function also takes an optional "S" which it uses instead of creating one (see .value2)
+ - make sure eof checks happen when there are no switch statements (e.g. block_comment)
  - fix genmachine typing, esp. wrt linked lists.
  - finish genmachine as per everything needed here.
 
 |enum[NodeType]
-  |ROOT |BLANK |VALUE |FULL
+  |ROOT |BLANK |NORMAL
 
 |struct[Node]
   |node_type     NodeType
@@ -15,19 +20,18 @@ TODO:
   |source_column Z+
   |name          STRING
   |id            STRING
-  |value         STRING
   |classes       LIST
   |attributes    DICT
   |children      Node
 
 |entry-point /node:child-shortcut
 
-|function[node:Node]  | inl=1 | ibase=COL | ipar=COL-1
+#-------------+-----------+----------------------------------------+--------------------
+|function[node:Node]  | inl=1 | ibase=COL | ipar=COL-1 | S.node_type=NORMAL
   |state[:init]
     |eof                  | S.node_type=BLANK                      |return S
     |c[\n]    |.value1    | -> | S.node_type=BLANK                 |>> :child
-    |c[ \t]   |.value2    | -> | S = /value_node                   |return S
-                          # TODO: free old S
+    |c[ \t]   |.value2    | -> | S = /value                        |return S
     |c[:]     |.attr      | ->                                     |>> :attribute
     |c[<LBR>] |.id        |                                        |>> :identity.id
     |c[.]     |.class     |                                        |>> :identity.class
@@ -44,20 +48,35 @@ TODO:
   |state[:child]
     |c[ \t]   |.lead      | ->                                     |>>
     |c[\n]    |.nl        |if[!inl] | C << /node |endif | inl=0    |>>
-    |c[#]     |.comment   | -> | /comment                          |>>
+    |c[#]     |.bcomment  | -> | /block_comment                    |>>
     |default  |.text      |if[COL <= ipar]                         |return S
                           |endif                                   |>> :child2
   |state[:child2]
     |c[<PIPE>]|.node      | -> | C << /node                        |>> :child
     |c[:]     |.attribute | ->                                     |>> :attribute
-    |default  |.value     |if[inl] | C << /value_node              |>> :child
+    |default  |.value     |if[inl] | C << /value                   |>> :child
                           |endif   | C << /data_node               |>> :child
+  # TODO: attribute
 
+#-------------+-----------+----------------------------------------+--------------------
 |function[value:STRING]   | ibase = COL | ipar = COL - 1 | MARK
-  |state[:main]           | S.node_type = VALUE
-    |c[ \t]   |.space     | ->                                     |
-#TODO: You are here...
+  |eof                    | MARK_END?                              |return S
+  |state[:main]
+    |c[ \t]   |.space     | ->                                     |>> :disamb
+    |c[\n]    |.newline   | MARK_END | ->                          |>> :newline
+    |default  |.collect   | ->                                     |>>
+  |state[:disamb]
+    |c[ \t]   |.space     | ->                                     |>>
+    |c[\n]    |.newline   | ->                                     |>> :newline
+    |c[#]     |.comment   | [\n]->                                 |>> :newline
+    |c[<PIPE>.!:] |.done  | MARK_END                               |return S
+    |default  |.collect   | ->                                     |>> :main
+  |state[:newline]
+    |c[ \t]   |.indent    | ->                                     |>>
+    |c[\n]    |.newline   | ->                                     |>>
+    |c[#]     |.comment   |
 
+#-------------+-----------+----------------------------------------+--------------------
 |function[label:STRING]   | lvl=0 | MARK
   |eof                    | MARK_END                               |return S
   |state[:init]
@@ -74,4 +93,9 @@ TODO:
     |c[\n]    |.collect1  | ->                                     |>>
     |default  |.collect2  | ->                                     |>>
 
-|function[comment]        | ibase = COL | ipar = COL - 1
+#-------------+-----------+----------------------------------------+--------------------
+|function[block_comment]  | ibase = COL | ipar = COL - 1
+  |state[:main]           | [\n]->                                 |>> :next
+  |state[:next]           | ->[^ \t]
+    |if[COL <= ipar]                                               |return
+    |else                                                          |>> :main
