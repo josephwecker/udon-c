@@ -8,6 +8,9 @@ TODO:
    - MARK_END to current position if marked flag is not yet set.
    - (have the "marked" flag a local variable instead of a member)
 
+ - <RBR> special
+ - automatically construct a new string for a variable if last one was already
+   appended and new one is "MARK"ed
  - "MARKED" boolean predicate macro
  - catch this up with older udon*.machine drafts.
  - support for void functions (e.g., block_comment)
@@ -71,8 +74,11 @@ TODO:
     |c[<PIPE>]|.node      | -> | C << /node                        |>> :child
     |c[:]     |.attribute | ->                                     |>> :attribute
     |default  |.value     |if[inl] | C << /value                   |>> :child
-                          |endif   | C << /data_node               |>> :child
-  # TODO: attribute
+                          |endif   | C << /data                    |>> :child
+  |state[:attribute]
+    |c[<PIPE>]|.grim      | -> | g=/node | S.attributes[g.name]=g  |>> :child
+    |c[<LBR>] |.grim2     |    | g=/node | S.attributes[g.name]=g  |>> :child
+    |default  |.normal    | key=/label | S.attributes[key]=/value  |>> :child
 
 #-------------+-----------+----------------------------------------+----------------
 |function[value:Data]     | ibase = COL | ipar=COL-1 | a=STRING | MARK(a)
@@ -98,6 +104,18 @@ TODO:
       |else               | a = STRING | MARK(a)                   |>> :main
 
 #-------------+-----------+----------------------------------------+----------------
+|function[data:Data]      | ibase = COL | ipar=COL-1 | a=STRING | MARK(a)
+  |eof                    | S.lines << a                           |return S
+  |state[:main]           | ->[\n] | MARK_END(a) | S.lines<<a | ->
+  |state[:newline]
+    |if[COL > ibase]      | a=STRING | MARK(a)                     |>> :main
+    |c[ \t]   |.indent    | ->                                     |>>
+    |c[\n]    |.newline   | ->                                     |>>
+    |default  |.value
+      |if[COL <= ipar]                                             |return S
+      |else               | a=STRING | MARK(a)                     |>> :main
+
+#-------------+-----------+----------------------------------------+----------------
 |function[label:STRING]   | lvl=0 | MARK
   |eof                    | MARK_END                               |return S
   |state[:init]
@@ -108,10 +126,21 @@ TODO:
     |eof      |err Unexpected end of file - missing closing ')'
     |c[(]     |.nest      | -> | lvl+=1                            |>>
     |c[)]     |.unnest    | -> | lvl-=1
-      |if[lvl==0]                                                  |return S
+      |if[lvl==0]         | MARK_END                               |return S
       |else                                                        |>>
     |c[\n]    |.collect1  | ->                                     |>>
     |default  |.collect2  | ->                                     |>>
+
+#-------------+-----------+----------------------------------------+----------------
+|function[id:STRING]      | lvl=0 | MARK
+  |eof        |err Unexpected end of file - missing closing ']'
+  |state[:delim]
+    |c[<LBR>] |.nest      | -> | lvl += 1                          |>>
+    |c[<RBR>] |.unnest    | -> | lvl -= 1
+      |if[lvl==0]         | MARK_END                               |return S
+      |else                                                        |>>
+    |c[\n]    |.collectnl | ->                                     |>>
+    |default  |.collect   | ->                                     |>>
 
 #-------------+-----------+----------------------------------------+----------------
 |function[block_comment]  | ibase = COL | ipar = COL - 1

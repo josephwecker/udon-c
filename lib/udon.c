@@ -111,12 +111,12 @@ struct _UdonParseState {
 
 static inline UdonNode * _udon_node(_UdonParseState *p);
 static inline UdonData * _udon_value(_UdonParseState *p);
+static inline UdonData * _udon_data(_UdonParseState *p);
 static inline UdonString * _udon_label(_UdonParseState *p);
+static inline UdonString * _udon_id(_UdonParseState *p);
  _udon_block_comment(_UdonParseState *p);
 static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p);
 static inline UdonString * _udon_label__s_delim(_UdonParseState *p);
-static inline void * _udon_id(_UdonParseState *p);
-static inline void * _udon_data_node(_UdonParseState *p);
 static inline UdonNode * _new_udon_node(_UdonParseState *p);
 static inline UdonData * _new_udon_data(_UdonParseState *p);
 static inline UdonString * _new_udon_string(_UdonParseState *p);
@@ -327,6 +327,8 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
     uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
+    g;
+    key;
     self_res->node_type          = UDON_NORMAL;
     s_init:
         if(_UDON_EOF) {
@@ -467,7 +469,7 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
                         goto s_child;
                     }
                     {
-                        UdonList * _item  = (UdonList *)(_udon_data_node(p));
+                        UdonList * _item  = (UdonList *)(_udon_data(p));
                         UdonList * *_acc_head = (UdonList **) &(self_res->children);
                         UdonList * *_acc_tail = (UdonList **) &(self_res->_children__tail);
                         if(*_acc_tail == NULL) {
@@ -481,7 +483,25 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
             }
         }
     s_attribute:
-        udon_data_err("Parser for 'attribute' in 'node' not yet implemented.");
+        if(_UDON_EOF) goto _eof;
+        else {
+          _inner_s_attribute:
+            switch(*(p->curr)) {
+                case '|':   /*-- attribute.grim */
+                    _UDON_ADVANCE_COL();
+                    g            = _udon_node(p);
+                    self_res->attributes = g;
+                    goto s_child;
+                case '[':   /*-- attribute.grim2 */
+                    g            = _udon_node(p);
+                    self_res->attributes = g;
+                    goto s_child;
+                default:    /*-- attribute.normal */
+                    key          = _udon_label(p);
+                    self_res->attributes = _udon_value(p);
+                    goto s_child;
+            }
+        }
     _eof:
         return self_res;
 }
@@ -606,6 +626,70 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
 }
 
 
+static inline UdonData * _udon_data(_UdonParseState *p) {
+    UdonData * self_res          = _new_udon_data(p);
+    uint64_t ibase               = p->column;
+    uint64_t ipar                = p->column-1;
+    a                            = UDON_STRING;
+    a->start                     = p->curr;
+    s_main:
+        _UDON_ADVANCE_COL();
+        a->length                = p->curr - a->start;
+        {
+            UdonList * _item  = (UdonList *)(a);
+            UdonList * *_acc_head = (UdonList **) &(self_res->lines);
+            UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
+            if(*_acc_tail == NULL) {
+                *_acc_head = *_acc_tail = _item;
+            } else {
+                (*_acc_tail)->next = _item;
+                *_acc_tail = _item;
+            }
+        }
+        _UDON_ADVANCE_COL();
+    s_newline:
+        if(p->column>ibase) {
+            a                    = UDON_STRING;
+            a->start             = p->curr;
+            goto s_main;
+        }
+        if(_UDON_EOF) goto _eof;
+        else {
+          _inner_s_newline:
+            switch(*(p->curr)) {
+                case ' ':
+                case '\t':  /*-- newline.indent */
+                    _UDON_ADVANCE_COL();
+                    goto s_newline;
+                case '\n':  /*-- newline.newline */
+                    _UDON_ADVANCE_LINE();
+                    goto s_newline;
+                default:    /*-- newline.value -*/
+                    if(p->column<=ipar) {
+                        return self_res;
+                    } else {
+                        a        = UDON_STRING;
+                        a->start = p->curr;
+                        goto _inner_s_main;
+                    }
+            }
+        }
+    _eof:
+        {
+            UdonList * _item  = (UdonList *)(a);
+            UdonList * *_acc_head = (UdonList **) &(self_res->lines);
+            UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
+            if(*_acc_tail == NULL) {
+                *_acc_head = *_acc_tail = _item;
+            } else {
+                (*_acc_tail)->next = _item;
+                *_acc_tail = _item;
+            }
+        }
+        return self_res;
+}
+
+
 static inline UdonString * _udon_label(_UdonParseState *p) {
     UdonString * self_res        = _new_udon_string(p);
     uint64_t lvl                 = 0;
@@ -644,8 +728,12 @@ static inline UdonString * _udon_label(_UdonParseState *p) {
                 case ')':   /*-- delim.unnest --*/
                     _UDON_ADVANCE_COL();
                     lvl         -= 1;
-                    if(lvl==0) return self_res;
-                    else goto s_delim;
+                    if(lvl==0) {
+                        self_res->length = p->curr - self_res->start;
+                        return self_res;
+                    } else {
+                        goto s_delim;
+                    }
                 case '\n':  /*-- delim.collect1 */
                     _UDON_ADVANCE_LINE();
                     goto s_delim;
@@ -657,6 +745,45 @@ static inline UdonString * _udon_label(_UdonParseState *p) {
     _eof:
         self_res->length         = p->curr - self_res->start;
         return self_res;
+}
+
+
+static inline UdonString * _udon_id(_UdonParseState *p) {
+    UdonString * self_res        = _new_udon_string(p);
+    uint64_t lvl                 = 0;
+    self_res->start              = p->curr;
+    s_delim:
+        if(_UDON_EOF) goto _eof;
+        else {
+          _inner_s_delim:
+            switch(*(p->curr)) {
+                case '[':   /*-- delim.nest ----*/
+                    _UDON_ADVANCE_COL();
+                    lvl         += 1;
+                    goto s_delim;
+                case '<':
+                case 'R':
+                case 'B':
+                case 'R':
+                case '>':   /*-- delim.unnest --*/
+                    _UDON_ADVANCE_COL();
+                    lvl         -= 1;
+                    if(lvl==0) {
+                        self_res->length = p->curr - self_res->start;
+                        return self_res;
+                    } else {
+                        goto s_delim;
+                    }
+                case '\n':  /*-- delim.collectnl */
+                    _UDON_ADVANCE_LINE();
+                    goto s_delim;
+                default:    /*-- delim.collect -*/
+                    _UDON_ADVANCE_COL();
+                    goto s_delim;
+            }
+        }
+    _eof:
+        udon_data_err("Unexpected end of file - missing closing ']'");
 }
 
 
@@ -677,6 +804,8 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
     uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
+    g;
+    key;
     self_res->node_type          = UDON_NORMAL;
     s_child_shortcut:
         self_res->node_type      = UDON_ROOT;
@@ -755,7 +884,7 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                         goto s_child;
                     }
                     {
-                        UdonList * _item  = (UdonList *)(_udon_data_node(p));
+                        UdonList * _item  = (UdonList *)(_udon_data(p));
                         UdonList * *_acc_head = (UdonList **) &(self_res->children);
                         UdonList * *_acc_tail = (UdonList **) &(self_res->_children__tail);
                         if(*_acc_tail == NULL) {
@@ -765,6 +894,26 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                             *_acc_tail = _item;
                         }
                     }
+                    goto s_child;
+            }
+        }
+    s_attribute:
+        if(_UDON_EOF) goto _eof;
+        else {
+          _inner_s_attribute:
+            switch(*(p->curr)) {
+                case '|':   /*-- attribute.grim */
+                    _UDON_ADVANCE_COL();
+                    g            = _udon_node(p);
+                    self_res->attributes = g;
+                    goto s_child;
+                case '[':   /*-- attribute.grim2 */
+                    g            = _udon_node(p);
+                    self_res->attributes = g;
+                    goto s_child;
+                default:    /*-- attribute.normal */
+                    key          = _udon_label(p);
+                    self_res->attributes = _udon_value(p);
                     goto s_child;
             }
         }
@@ -830,8 +979,6 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                 default:    /*-- identity.child */   goto _inner_s_child;
             }
         }
-    s_attribute:
-        udon_data_err("Parser for 'attribute' in 'node__s_child_shortcut' not yet implemented.");
     _eof:
         return self_res;
 }
@@ -855,8 +1002,12 @@ static inline UdonString * _udon_label__s_delim(_UdonParseState *p) {
                 case ')':   /*-- delim.unnest --*/
                     _UDON_ADVANCE_COL();
                     lvl         -= 1;
-                    if(lvl==0) return self_res;
-                    else goto s_delim;
+                    if(lvl==0) {
+                        self_res->length = p->curr - self_res->start;
+                        return self_res;
+                    } else {
+                        goto s_delim;
+                    }
                 case '\n':  /*-- delim.collect1 */
                     _UDON_ADVANCE_LINE();
                     goto s_delim;
@@ -888,18 +1039,6 @@ static inline UdonString * _udon_label__s_delim(_UdonParseState *p) {
     _eof:
         self_res->length         = p->curr - self_res->start;
         return self_res;
-}
-
-
-static inline void * _udon_id(_UdonParseState *p) {
-    udon_data_err("Parser for 'id' not yet implemented.");
-    return NULL;
-}
-
-
-static inline void * _udon_data_node(_UdonParseState *p) {
-    udon_data_err("Parser for 'data_node' not yet implemented.");
-    return NULL;
 }
 
 
