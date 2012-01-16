@@ -50,6 +50,31 @@ class String
   end
 end
 
+class GMTypeMap
+  # At some point I'll probably want to consolidate the typing mechanisms
+  # scattered all over into this class.
+
+  # Used for:
+  #   - constructors/allocators
+  #   - function prototypes
+  #   - initializers
+  #   - member destructuring (pointer vs. dereferenced for members etc.)
+  #   - type checking / static analysis
+
+  # Types from:
+  #  - specified function return type
+  #    * becomes type for anything the function returns to
+  #    * becomes type for S (self_res)
+  #  - when right-hand-side of an assignment is a type (with .new ?)
+  #    * becomes type for left side
+  #  - when a variable is marked, it's a STRING
+  #  - when a variable is assigned an enum member it is that enum
+  #  - we know the types of most members based on struct/enum declarations
+  #  - when a number, COL, or LINE are assigned to something it is a Z+
+
+end
+
+
 class GM
   attr_accessor :name, :body, :epoints, :allocators, :enums, :structs,
     :used_types, :use_gmstring, :use_gmlist, :use_gmdict, :listy
@@ -395,6 +420,12 @@ class GMCommand < GMGenericChild
             end
           end
         end
+      elsif @operator == '<<'
+        # TODO: YOU ARE HERE - need to figure out how to do the extra logic
+        # when a string is involved, and make the assumption that everything is
+        # "listable" ready.
+      end
+=begin
       elsif @operator == '<<<'
         # Assumes variable being appended to is a struct->member !
         lsmain, lsmember = outv(@lside).split('->')
@@ -426,6 +457,7 @@ class GMCommand < GMGenericChild
           "    }",
           '}']
       end
+=end
     else
       @cmd = parse_side(cmd)
       if @cmd[0] == :acc

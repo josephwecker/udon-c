@@ -25,6 +25,7 @@ TODO:
  - types automatically include a member field that indicates the function that
    generated it.
 
+
 |enum[NodeType]
   |ROOT |BLANK |NORMAL
 
@@ -142,7 +143,7 @@ TODO:
 
 #-------------+-----------+----------------------------------------+----------------
 |function[block_comment]  | ibase = COL | ipar = COL - 1
-  |state[:main]           | [\n]->                                 |>> :next
+  |state[:main]           | [\n]->                                 |
   |state[:next]           | ->[^ \t]
     |if[COL <= ipar]                                               |return
     |else                                                          |>> :main
