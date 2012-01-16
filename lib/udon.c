@@ -761,11 +761,7 @@ static inline UdonString * _udon_id(_UdonParseState *p) {
                     _UDON_ADVANCE_COL();
                     lvl         += 1;
                     goto s_delim;
-                case '<':
-                case 'R':
-                case 'B':
-                case 'R':
-                case '>':   /*-- delim.unnest --*/
+                case ']':   /*-- delim.unnest --*/
                     _UDON_ADVANCE_COL();
                     lvl         -= 1;
                     if(lvl==0) {

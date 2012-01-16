@@ -688,7 +688,7 @@ class GMCase < GMGenericChild
       gm.checked_newline = false
     else
       @default = false
-      @name = @name.gsub('<LBR>','[').gsub('<PIPE>','|').gsub('\\t',"\t").gsub('\\n',"\n")
+      @name = @name.gsub('<L>','[').gsub('<R>',']').gsub('<P>','|').gsub('\\t',"\t").gsub('\\n',"\n")
       @chars = @name.split(//).map{|c| c.gsub("\n",'\\n').gsub("\t",'\\t').gsub("'","\\'").gsub("\\","\\\\")}
       gm.checked_newline = @chars.include?("\\n")
     end

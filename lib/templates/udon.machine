@@ -8,11 +8,9 @@ TODO:
    - MARK_END to current position if marked flag is not yet set.
    - (have the "marked" flag a local variable instead of a member)
 
- - <RBR> special
  - automatically construct a new string for a variable if last one was already
    appended and new one is "MARK"ed
  - "MARKED" boolean predicate macro
- - catch this up with older udon*.machine drafts.
  - support for void functions (e.g., block_comment)
  - support for advance-past and advance-to
  - support negative advance-to character classes (e.g.  ->[^ \t])
@@ -52,15 +50,15 @@ TODO:
     |c[\n]    |.value1    | -> | S.node_type=BLANK                 |>> :child
     |c[ \t]   |.value2    | -> | S = /value                        |return S
     |c[:]     |.attr      | ->                                     |>> :attribute
-    |c[<LBR>] |.id        |                                        |>> :identity.id
+    |c[<L>]   |.id        |                                        |>> :identity.id
     |c[.]     |.class     |                                        |>> :identity.class
     |c[(]     |.delim     | S.name=/label:delim                    |>> :identity
-    |c[<PIPE>]|.child     |                                        |>> :child2.node
+    |c[<P>]   |.child     |                                        |>> :child2.node
     |c[{]     |.embed     |err Embedded nodes are not yet supported
     |default  |.name      | S.name=/label                          |>> :identity
   |state[:identity]
     |c[ \t]   |.lead      | ->                                     |>>
-    |c[<LBR>] |.id        | S.id=/id                               |>>
+    |c[<L>]   |.id        | S.id=/id                               |>>
     |c[.]     |.class     | ->| S.classes << /label                |>>
     |default  |.child     |                                        |>> :child
   |state[:child-shortcut] | S.node_type=ROOT | inl = 0             |>> :child
@@ -71,13 +69,13 @@ TODO:
     |default  |.text      |if[COL <= ipar]                         |return S
                           |endif                                   |>> :child2
   |state[:child2]
-    |c[<PIPE>]|.node      | -> | C << /node                        |>> :child
+    |c[<P>]   |.node      | -> | C << /node                        |>> :child
     |c[:]     |.attribute | ->                                     |>> :attribute
     |default  |.value     |if[inl] | C << /value                   |>> :child
                           |endif   | C << /data                    |>> :child
   |state[:attribute]
-    |c[<PIPE>]|.grim      | -> | g=/node | S.attributes[g.name]=g  |>> :child
-    |c[<LBR>] |.grim2     |    | g=/node | S.attributes[g.name]=g  |>> :child
+    |c[<P>]   |.grim      | -> | g=/node | S.attributes[g.name]=g  |>> :child
+    |c[<L>]   |.grim2     |    | g=/node | S.attributes[g.name]=g  |>> :child
     |default  |.normal    | key=/label | S.attributes[key]=/value  |>> :child
 
 #-------------+-----------+----------------------------------------+----------------
@@ -91,7 +89,7 @@ TODO:
     |c[ \t]   |.space     | ->                                     |>>
     |c[\n]    |.newline   | ->                                     |>> :newline
     |c[#]     |.comment   | [\n]->                                 |>> :newline
-    |c[<PIPE>.!:] |.done  | S.lines << a                           |return S
+    |c[<P>.!:]|.done  | S.lines << a                           |return S
     |default  |.collect   | ->                                     |>> :main
   |state[:newline]        | S.lines << a
   |state[:linestart]
@@ -120,7 +118,7 @@ TODO:
   |eof                    | MARK_END                               |return S
   |state[:init]
     |c[(]     |.delim     |                                        |>> :delim.nest
-    |c[ \t\n<LBR><PIPE>.!]|.done| MARK_END                         |return S
+    |c[ \t\n<L><P>.!]|.done| MARK_END                         |return S
     |default  |.collect   | ->                                     |>>
   |state[:delim]
     |eof      |err Unexpected end of file - missing closing ')'
@@ -135,8 +133,8 @@ TODO:
 |function[id:STRING]      | lvl=0 | MARK
   |eof        |err Unexpected end of file - missing closing ']'
   |state[:delim]
-    |c[<LBR>] |.nest      | -> | lvl += 1                          |>>
-    |c[<RBR>] |.unnest    | -> | lvl -= 1
+    |c[<L>]   |.nest      | -> | lvl += 1                          |>>
+    |c[<R>]   |.unnest    | -> | lvl -= 1
       |if[lvl==0]         | MARK_END                               |return S
       |else                                                        |>>
     |c[\n]    |.collectnl | ->                                     |>>

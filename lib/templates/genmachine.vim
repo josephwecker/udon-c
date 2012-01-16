@@ -37,7 +37,7 @@ syn match gmDirective    /|\(parser\|entry-point\|return\|>>\)/ contains=gmDelim
 
 syn match gmName         /\[[^\]]*\]/ contained contains=gmDelims2
 syn match gmChars        /\[[^\]]*\]/ contained contains=gmDelims1,gmSpecialChars
-syn match gmSpecialChars /\\t\|\\n\|<LBR>\|<PIPE>/ contained
+syn match gmSpecialChars /\\t\|\\n\|<\L>\|<\P>\|<\R>/ contained
 
 syn match gmDelims       /[|\/]/ contained
 syn match gmDelims1      /[|]/ contained
