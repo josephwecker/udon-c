@@ -57,13 +57,13 @@ syn match gmConstant     /[A-Z][A-Z0-9_]*/ contained
 syn match gmType         /[A-Z]\+[a-z]\+[A-Za-z0-9_]*/ contained
 syn match gmBooleanOps   /==\|>=\|<=\|!\|!=/ contained
 syn match gmOperator     /=\|-\|+\|+=\|-=/
-syn match gmSpecialOps   /<<\|->/
+syn match gmSpecialOps   /<<<\?\|->/
 syn match gmInt          /[0-9]\+/
 
 syn match gmSubstateDef  /|\.[a-z0-9_-]\+/ contains=gmDelims
 syn match gmCommand      /|\([ \t]\+[^|]*\|$\)/ contains=gmDelims,gmVariable,gmSpecialOps,gmOperator,gmInt,gmConsts,gmLocation,gmConstant,gmType
 
-syn keyword gmConsts     S COL C MARK MARK_END
+syn keyword gmConsts     S COL C MARK TERM
 
 
 hi def link gmCommentary Comment

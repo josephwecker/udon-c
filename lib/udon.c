@@ -511,7 +511,7 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
     UdonData * self_res          = _new_udon_data(p);
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
-    a                            = UDON_STRING;
+    UdonString * a               = _new_udon_string(p);
     a->start                     = p->curr;
     s_main:
         if(_UDON_EOF) goto _eof;
@@ -552,14 +552,19 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
                 case '!':
                 case ':':   /*-- disamb.done ---*/
                     {
-                        UdonList * _item  = (UdonList *)(a);
-                        UdonList * *_acc_head = (UdonList **) &(self_res->lines);
-                        UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
-                        if(*_acc_tail == NULL) {
-                            *_acc_head = *_acc_tail = _item;
-                        } else {
-                            (*_acc_tail)->next = _item;
-                            *_acc_tail = _item;
+                        if(a) {
+                            if(!a->start) a->start = p->curr;
+                            if(!a->length) a->length = p->curr - a->start;
+                            UdonList * _item  = (UdonList *)(a);
+                            UdonList * *_acc_head = (UdonList **) &(self_res->lines);
+                            UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
+                            if(*_acc_tail == NULL) {
+                                *_acc_head = *_acc_tail = _item;
+                            } else {
+                                (*_acc_tail)->next = _item;
+                                *_acc_tail = _item;
+                            }
+                            a = NULL;
                         }
                     }
                     return self_res;
@@ -570,19 +575,23 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
         }
     s_newline:
         {
-            UdonList * _item  = (UdonList *)(a);
-            UdonList * *_acc_head = (UdonList **) &(self_res->lines);
-            UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
-            if(*_acc_tail == NULL) {
-                *_acc_head = *_acc_tail = _item;
-            } else {
-                (*_acc_tail)->next = _item;
-                *_acc_tail = _item;
+            if(a) {
+                if(!a->start) a->start = p->curr;
+                if(!a->length) a->length = p->curr - a->start;
+                UdonList * _item  = (UdonList *)(a);
+                UdonList * *_acc_head = (UdonList **) &(self_res->lines);
+                UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
+                if(*_acc_tail == NULL) {
+                    *_acc_head = *_acc_tail = _item;
+                } else {
+                    (*_acc_tail)->next = _item;
+                    *_acc_tail = _item;
+                }
+                a = NULL;
             }
         }
     s_linestart:
         if(p->column>ibase) {
-            a                    = UDON_STRING;
             a->start             = p->curr;
             goto s_main;
         }
@@ -604,7 +613,6 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
                     if(p->column<=ipar) {
                         return self_res;
                     } else {
-                        a        = UDON_STRING;
                         a->start = p->curr;
                         goto _inner_s_main;
                     }
@@ -612,14 +620,19 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
         }
     _eof:
         {
-            UdonList * _item  = (UdonList *)(a);
-            UdonList * *_acc_head = (UdonList **) &(self_res->lines);
-            UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
-            if(*_acc_tail == NULL) {
-                *_acc_head = *_acc_tail = _item;
-            } else {
-                (*_acc_tail)->next = _item;
-                *_acc_tail = _item;
+            if(a) {
+                if(!a->start) a->start = p->curr;
+                if(!a->length) a->length = p->curr - a->start;
+                UdonList * _item  = (UdonList *)(a);
+                UdonList * *_acc_head = (UdonList **) &(self_res->lines);
+                UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
+                if(*_acc_tail == NULL) {
+                    *_acc_head = *_acc_tail = _item;
+                } else {
+                    (*_acc_tail)->next = _item;
+                    *_acc_tail = _item;
+                }
+                a = NULL;
             }
         }
         return self_res;
@@ -630,26 +643,29 @@ static inline UdonData * _udon_data(_UdonParseState *p) {
     UdonData * self_res          = _new_udon_data(p);
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
-    a                            = UDON_STRING;
+    UdonString * a               = _new_udon_string(p);
     a->start                     = p->curr;
     s_main:
         _UDON_ADVANCE_COL();
-        a->length                = p->curr - a->start;
         {
-            UdonList * _item  = (UdonList *)(a);
-            UdonList * *_acc_head = (UdonList **) &(self_res->lines);
-            UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
-            if(*_acc_tail == NULL) {
-                *_acc_head = *_acc_tail = _item;
-            } else {
-                (*_acc_tail)->next = _item;
-                *_acc_tail = _item;
+            if(a) {
+                if(!a->start) a->start = p->curr;
+                if(!a->length) a->length = p->curr - a->start;
+                UdonList * _item  = (UdonList *)(a);
+                UdonList * *_acc_head = (UdonList **) &(self_res->lines);
+                UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
+                if(*_acc_tail == NULL) {
+                    *_acc_head = *_acc_tail = _item;
+                } else {
+                    (*_acc_tail)->next = _item;
+                    *_acc_tail = _item;
+                }
+                a = NULL;
             }
         }
         _UDON_ADVANCE_COL();
     s_newline:
         if(p->column>ibase) {
-            a                    = UDON_STRING;
             a->start             = p->curr;
             goto s_main;
         }
@@ -668,7 +684,6 @@ static inline UdonData * _udon_data(_UdonParseState *p) {
                     if(p->column<=ipar) {
                         return self_res;
                     } else {
-                        a        = UDON_STRING;
                         a->start = p->curr;
                         goto _inner_s_main;
                     }
@@ -676,14 +691,19 @@ static inline UdonData * _udon_data(_UdonParseState *p) {
         }
     _eof:
         {
-            UdonList * _item  = (UdonList *)(a);
-            UdonList * *_acc_head = (UdonList **) &(self_res->lines);
-            UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
-            if(*_acc_tail == NULL) {
-                *_acc_head = *_acc_tail = _item;
-            } else {
-                (*_acc_tail)->next = _item;
-                *_acc_tail = _item;
+            if(a) {
+                if(!a->start) a->start = p->curr;
+                if(!a->length) a->length = p->curr - a->start;
+                UdonList * _item  = (UdonList *)(a);
+                UdonList * *_acc_head = (UdonList **) &(self_res->lines);
+                UdonList * *_acc_tail = (UdonList **) &(self_res->_lines__tail);
+                if(*_acc_tail == NULL) {
+                    *_acc_head = *_acc_tail = _item;
+                } else {
+                    (*_acc_tail)->next = _item;
+                    *_acc_tail = _item;
+                }
+                a = NULL;
             }
         }
         return self_res;
@@ -788,7 +808,6 @@ static inline UdonString * _udon_id(_UdonParseState *p) {
     uint64_t ipar                = p->column - 1;
     s_main:
         _UDON_ADVANCE_COL();
-        goto s_next;
     s_next:
         _UDON_ADVANCE_COL();
         if(p->column<=ipar) return;

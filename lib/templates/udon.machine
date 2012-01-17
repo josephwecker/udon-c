@@ -5,7 +5,7 @@ TODO:
  * Rules for appending string to linked list:
    - ignore/don't-append if string is NULL
    - ignore/don't-append if string's start is NULL
-   - MARK_END to current position if marked flag is not yet set.
+   - TERM to current position if marked flag is not yet set.
    - (have the "marked" flag a local variable instead of a member)
 
  - automatically construct a new string for a variable if last one was already
@@ -14,7 +14,7 @@ TODO:
  - support for void functions (e.g., block_comment)
  - support for advance-past and advance-to
  - support negative advance-to character classes (e.g.  ->[^ \t])
- - optional mark_end (only if not marked) with 'MARK_END?' (?) - or possibly
+ - optional mark_end (only if not marked) with 'TERM?' (?) - or possibly
    always check strings that are being appended to linked lists and mark_end
    with the current position if they aren't already.
  - adjust mark_end by some position (mark_end(-1))
@@ -80,52 +80,52 @@ TODO:
     |default  |.normal    | key=/label | S.attributes[key]=/value  |>> :child
 
 #-------------+-----------+----------------------------------------+----------------
-|function[value:Data]     | ibase = COL | ipar=COL-1 | a=STRING | MARK(a)
-  |eof                    | S.lines << a                           |return S
+|function[value:Data]     | ibase = COL | ipar=COL-1 | MARK(a)
+  |eof                    | S.lines <<< a                          |return S
   |state[:main]
-    |c[ \t]   |.space     | MARK_END(a) | ->                       |>> :disamb
-    |c[\n]    |.newline   | MARK_END(a) | ->                       |>> :newline
+    |c[ \t]   |.space     | TERM(a) | ->                           |>> :disamb
+    |c[\n]    |.newline   | TERM(a) | ->                           |>> :newline
     |default  |.collect   | ->                                     |>>
   |state[:disamb]
     |c[ \t]   |.space     | ->                                     |>>
     |c[\n]    |.newline   | ->                                     |>> :newline
     |c[#]     |.comment   | [\n]->                                 |>> :newline
-    |c[<P>.!:]|.done  | S.lines << a                           |return S
+    |c[<P>.!:]|.done      | S.lines <<< a                          |return S
     |default  |.collect   | ->                                     |>> :main
-  |state[:newline]        | S.lines << a
+  |state[:newline]        | S.lines <<< a
   |state[:linestart]
-    |if[COL > ibase]      | a = STRING | MARK(a)                   |>> :main
+    |if[COL > ibase]      | MARK(a)                                |>> :main
     |c[ \t]   |.indent    | ->                                     |>>
     |c[\n]    |.newline   | ->                                     |>>
     |c[#]     |.comment   | [\n]->                                 |>>
     |default  |.value
       |if[COL <= ipar]                                             |return S
-      |else               | a = STRING | MARK(a)                   |>> :main
+      |else               | MARK(a)                                |>> :main
 
 #-------------+-----------+----------------------------------------+----------------
-|function[data:Data]      | ibase = COL | ipar=COL-1 | a=STRING | MARK(a)
-  |eof                    | S.lines << a                           |return S
-  |state[:main]           | ->[\n] | MARK_END(a) | S.lines<<a | ->
+|function[data:Data]      | ibase = COL | ipar=COL-1 | MARK(a)
+  |eof                    | S.lines <<< a                          |return S
+  |state[:main]           | ->[\n] | S.lines <<< a | ->            |
   |state[:newline]
-    |if[COL > ibase]      | a=STRING | MARK(a)                     |>> :main
+    |if[COL > ibase]      | MARK(a)                                |>> :main
     |c[ \t]   |.indent    | ->                                     |>>
     |c[\n]    |.newline   | ->                                     |>>
     |default  |.value
       |if[COL <= ipar]                                             |return S
-      |else               | a=STRING | MARK(a)                     |>> :main
+      |else               | MARK(a)                                |>> :main
 
 #-------------+-----------+----------------------------------------+----------------
 |function[label:STRING]   | lvl=0 | MARK
-  |eof                    | MARK_END                               |return S
+  |eof                    | TERM                                   |return S
   |state[:init]
     |c[(]     |.delim     |                                        |>> :delim.nest
-    |c[ \t\n<L><P>.!]|.done| MARK_END                         |return S
+    |c[ \t\n<L><P>.!]|.done| TERM                                  |return S
     |default  |.collect   | ->                                     |>>
   |state[:delim]
     |eof      |err Unexpected end of file - missing closing ')'
     |c[(]     |.nest      | -> | lvl+=1                            |>>
     |c[)]     |.unnest    | -> | lvl-=1
-      |if[lvl==0]         | MARK_END                               |return S
+      |if[lvl==0]         | TERM                                   |return S
       |else                                                        |>>
     |c[\n]    |.collect1  | ->                                     |>>
     |default  |.collect2  | ->                                     |>>
@@ -136,7 +136,7 @@ TODO:
   |state[:delim]
     |c[<L>]   |.nest      | -> | lvl += 1                          |>>
     |c[<R>]   |.unnest    | -> | lvl -= 1
-      |if[lvl==0]         | MARK_END                               |return S
+      |if[lvl==0]         | TERM                                   |return S
       |else                                                        |>>
     |c[\n]    |.collectnl | ->                                     |>>
     |default  |.collect   | ->                                     |>>

@@ -367,7 +367,7 @@ class GMStruct < GMGenericChild
     if @struct_parent
       r += dent(ind+1)+gm.type_map(@struct_parent,false).ljust(i,' ') + " _base;\n\n"
     else
-      r += dent(ind+1)+gm.type_map('LIST').ljust(i,' ') + "ll;\n\n"
+      r += dent(ind+1)+gm.type_map('LIST',false).ljust(i,' ') + " ll;\n\n"
     end
 
     r += @body.map{|b| dent(ind+1)+b[1].ljust(i,' ') + ' ' + b[0]}.join(";\n")
@@ -420,47 +420,44 @@ class GMCommand < GMGenericChild
             end
           end
         end
-      elsif @operator == '<<'
-        # TODO: YOU ARE HERE - need to figure out how to do the extra logic
-        # when a string is involved, and make the assumption that everything is
-        # "listable" ready.
-      end
-=begin
-      elsif @operator == '<<<'
-        # Assumes variable being appended to is a struct->member !
-        lsmain, lsmember = outv(@lside).split('->')
-        tail = lsmain + '->_' + lsmember + '__tail'
-        @fullcmd = ['{',
-          "    #{gm.name.capitalize}List *_item = #{gm.allocator('LIST')};",
-          "    _item->v = (void *)#{outv(@rside)};",
-          "    _item->next = NULL;",
-          "    if(#{tail} == NULL) {",
-          "        #{outv(@lside)} = #{tail} = _item;",
-          "    } else {",
-          "        #{tail}->next = _item;",
-          "        #{tail} = #{tail}->next;",
-          "    }",
-          '}']
-      elsif @operator == '<<'
+      elsif @operator.include?('<<')
         lsmain, lsmember = outv(@lside).split('->')
         tail = "#{lsmain}->_#{lsmember}__tail"
         ltype = gm.type_map('LIST')
-        @fullcmd = ['{',
-          "    #{ltype} _item  = (#{ltype})(#{outv(@rside)});",
-          "    #{ltype} *_acc_head = (#{ltype}*) &(#{outv(@lside)});",
-          "    #{ltype} *_acc_tail = (#{ltype}*) &(#{tail});",
-          "    if(*_acc_tail == NULL) {",
-          "        *_acc_head = *_acc_tail = _item;",
-          "    } else {",
-          "        (*_acc_tail)->next = _item;",
-          "        *_acc_tail = _item;",
-          "    }",
-          '}']
+        r = outv(@rside)
+        ei = ''
+        @fullcmd = ['{']
+        if @operator == '<<<'
+          @fullcmd << "    if(#{r}) {"
+          @fullcmd << "        if(!#{r}->start) #{r}->start = p->curr;"
+          @fullcmd << "        if(!#{r}->length) #{r}->length = p->curr - #{r}->start;"
+          ei = '    '
+        end
+        @fullcmd += [
+            ei+"    #{ltype} _item  = (#{ltype})(#{outv(@rside)});",
+            ei+"    #{ltype} *_acc_head = (#{ltype}*) &(#{outv(@lside)});",
+            ei+"    #{ltype} *_acc_tail = (#{ltype}*) &(#{tail});",
+            ei+"    if(*_acc_tail == NULL) {",
+            ei+"        *_acc_head = *_acc_tail = _item;",
+            ei+"    } else {",
+            ei+"        (*_acc_tail)->next = _item;",
+            ei+"        *_acc_tail = _item;",
+            ei+"    }"]
+        if @operator == '<<<'
+          @fullcmd << "        #{r} = NULL;"
+          @fullcmd << "    }"
+        end
+        @fullcmd << '}'
       end
-=end
     else
       @cmd = parse_side(cmd)
       if @cmd[0] == :acc
+        # TODO:  YOU ARE HERE
+        # mark:
+        #   - allocate if not allocated (check w/ NULL)
+        #   - set pointer
+        # term:
+        #   - set length. the end.
         gmf.register_local(gm.type_map('STRING'), @cmd[1][1], gm.allocator('STRING'))
         @operator = '='
         if @cmd[1][0] == 'mark'
@@ -510,7 +507,7 @@ class GMCommand < GMGenericChild
   def parse_side(cmd)
     return nil if cmd.nil?
     cmd = specials_map(cmd)
-    if cmd =~ /(?<=^|[^a-zA-Z0-9_])(MARK|MARK_END)\s*(?:\(([^\)]*)\))?(?=$|[^a-zA-Z0-9_])/u
+    if cmd =~ /(?<=^|[^a-zA-Z0-9_])(MARK|TERM)\s*(?:\(([^\)]*)\))?(?=$|[^a-zA-Z0-9_])/u
                                              return [:acc,      [$1.downcase, $2 || 'self_res']]
     elsif cmd.start_with?('/')             ; return [:location, gm.parse_location(cmd)[1]]
     elsif cmd =~ /^[A-Z]+[a-z]+[a-zA-Z]*$/ ; return [:type,     cmd]

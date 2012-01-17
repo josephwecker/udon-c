@@ -117,7 +117,7 @@ typedef enum UdonNodeType        UdonNodeType;
 
 /* --- Main return structures --- */
 struct UdonNode {
-    UdonList *                  ll;
+    UdonList                     ll;
 
     UdonNodeType                 node_type;
     uint64_t                     source_line;
@@ -133,7 +133,7 @@ typedef struct UdonNode          UdonNode;
 
 
 struct UdonData {
-    UdonList *                  ll;
+    UdonList                     ll;
 
     UdonList *                   lines;
     UdonList *                   _lines__tail;
