@@ -4,13 +4,23 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   * Stablize types, structures, listability, member referencing, inheritance,
-#     strings and lists.
-#   * automatic 'defaults' with errors where none specified so there are no
-#     unexpected code paths (esp. after states get reorganized).
+#   - support for void functions (e.g., block_comment)
+#   - support for advance-past and advance-to
+#   - each function also takes an optional "S" which it uses instead of creating one (see .value2)
+#   - make sure eof checks happen when there are no switch statements (e.g. block_comment)
 #
 #   (Extra credit)
+#   * support negative advance-to character classes (e.g.  ->[^ \t])
+#   * adjust TERM by some position (TERM(a,-1))
+#   * types automatically include a member field that indicates the function that
+#     generated it.
+#   * automatic 'defaults' with errors where none specified so there are no
+#     unexpected code paths (esp. after states get reorganized).
 #   * ..._free_parser implementation (for real)
+#   * Stablize types, structures, listability, member referencing, inheritance,
+#     strings and lists.
+#   * Preallocate big block of small structs (especially string references) as
+#     a pool-like resource that also gets freed appropriately.
 #   * Much better genmachine abstraction for addressing members of a parent
 #     struct.
 #   * Set source and column in result value when applicable in allocators
@@ -432,8 +442,7 @@ class GMCommand < GMGenericChild
         ei = ''
         @fullcmd = ['{']
         if @operator == '<<<'
-          @fullcmd << "    if(#{r}) {"
-          @fullcmd << "        if(!#{r}->start) #{r}->start = p->curr;"
+          @fullcmd << "    if(#{r} && #{r}->start) {"
           @fullcmd << "        if(!#{r}->length) #{r}->length = p->curr - #{r}->start;"
           ei = '    '
         end

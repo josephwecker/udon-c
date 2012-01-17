@@ -1,31 +1,5 @@
 |parser udon
 
-TODO:
-
- * Rules for appending string to linked list:
-   - ignore/don't-append if string is NULL
-   - ignore/don't-append if string's start is NULL
-   - TERM to current position if marked flag is not yet set.
-   - (have the "marked" flag a local variable instead of a member)
-
- - automatically construct a new string for a variable if last one was already
-   appended and new one is "MARK"ed
- - "MARKED" boolean predicate macro
- - support for void functions (e.g., block_comment)
- - support for advance-past and advance-to
- - support negative advance-to character classes (e.g.  ->[^ \t])
- - optional mark_end (only if not marked) with 'TERM?' (?) - or possibly
-   always check strings that are being appended to linked lists and mark_end
-   with the current position if they aren't already.
- - adjust mark_end by some position (mark_end(-1))
- - each function also takes an optional "S" which it uses instead of creating one (see .value2)
- - make sure eof checks happen when there are no switch statements (e.g. block_comment)
- - fix genmachine typing, esp. wrt linked lists.
- - finish genmachine as per everything needed here.
- - types automatically include a member field that indicates the function that
-   generated it.
-
-
 |enum[NodeType]
   |ROOT |BLANK |NORMAL
 

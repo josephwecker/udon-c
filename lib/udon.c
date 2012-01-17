@@ -553,8 +553,7 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
                 case '!':
                 case ':':   /*-- disamb.done ---*/
                     {
-                        if(a) {
-                            if(!a->start) a->start = p->curr;
+                        if(a && a->start) {
                             if(!a->length) a->length = p->curr - a->start;
                             UdonList * _item  = (UdonList *)(a);
                             UdonList * *_acc_head = (UdonList **) &(self_res->lines);
@@ -576,8 +575,7 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
         }
     s_newline:
         {
-            if(a) {
-                if(!a->start) a->start = p->curr;
+            if(a && a->start) {
                 if(!a->length) a->length = p->curr - a->start;
                 UdonList * _item  = (UdonList *)(a);
                 UdonList * *_acc_head = (UdonList **) &(self_res->lines);
@@ -623,8 +621,7 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
         }
     _eof:
         {
-            if(a) {
-                if(!a->start) a->start = p->curr;
+            if(a && a->start) {
                 if(!a->length) a->length = p->curr - a->start;
                 UdonList * _item  = (UdonList *)(a);
                 UdonList * *_acc_head = (UdonList **) &(self_res->lines);
@@ -651,8 +648,7 @@ static inline UdonData * _udon_data(_UdonParseState *p) {
     s_main:
         _UDON_ADVANCE_COL();
         {
-            if(a) {
-                if(!a->start) a->start = p->curr;
+            if(a && a->start) {
                 if(!a->length) a->length = p->curr - a->start;
                 UdonList * _item  = (UdonList *)(a);
                 UdonList * *_acc_head = (UdonList **) &(self_res->lines);
@@ -696,8 +692,7 @@ static inline UdonData * _udon_data(_UdonParseState *p) {
         }
     _eof:
         {
-            if(a) {
-                if(!a->start) a->start = p->curr;
+            if(a && a->start) {
                 if(!a->length) a->length = p->curr - a->start;
                 UdonList * _item  = (UdonList *)(a);
                 UdonList * *_acc_head = (UdonList **) &(self_res->lines);
