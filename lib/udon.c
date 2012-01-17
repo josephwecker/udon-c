@@ -592,7 +592,8 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
         }
     s_linestart:
         if(p->column>ibase) {
-            a->start             = p->curr;
+            if(!a)  a = _new_udon_string(p);
+            a->start = p->curr;
             goto s_main;
         }
         if(_UDON_EOF) goto _eof;
@@ -613,6 +614,7 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
                     if(p->column<=ipar) {
                         return self_res;
                     } else {
+                        if(!a)  a = _new_udon_string(p);
                         a->start = p->curr;
                         goto _inner_s_main;
                     }
@@ -666,7 +668,8 @@ static inline UdonData * _udon_data(_UdonParseState *p) {
         _UDON_ADVANCE_COL();
     s_newline:
         if(p->column>ibase) {
-            a->start             = p->curr;
+            if(!a)  a = _new_udon_string(p);
+            a->start = p->curr;
             goto s_main;
         }
         if(_UDON_EOF) goto _eof;
@@ -684,6 +687,7 @@ static inline UdonData * _udon_data(_UdonParseState *p) {
                     if(p->column<=ipar) {
                         return self_res;
                     } else {
+                        if(!a)  a = _new_udon_string(p);
                         a->start = p->curr;
                         goto _inner_s_main;
                     }
@@ -1060,6 +1064,7 @@ static inline UdonString * _udon_label__s_delim(_UdonParseState *p) {
 static inline UdonNode * _new_udon_node(_UdonParseState *p) {
     UdonNode * res               = (UdonNode *)udon_malloc(sizeof(UdonNode));
     if(!res) udon_memory_err("Memory allocation failed for Node.");
+    memset(res, 0, sizeof(UdonNode));
     return res;
 }
 
@@ -1067,6 +1072,7 @@ static inline UdonNode * _new_udon_node(_UdonParseState *p) {
 static inline UdonData * _new_udon_data(_UdonParseState *p) {
     UdonData * res               = (UdonData *)udon_malloc(sizeof(UdonData));
     if(!res) udon_memory_err("Memory allocation failed for Data.");
+    memset(res, 0, sizeof(UdonData));
     return res;
 }
 
@@ -1074,6 +1080,7 @@ static inline UdonData * _new_udon_data(_UdonParseState *p) {
 static inline UdonString * _new_udon_string(_UdonParseState *p) {
     UdonString * res             = (UdonString *)udon_malloc(sizeof(UdonString));
     if(!res) udon_memory_err("Memory allocation failed for STRING.");
+    memset(res, 0, sizeof(UdonString));
     return res;
 }
 

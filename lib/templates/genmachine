@@ -201,6 +201,7 @@ class GM
       f = GMFunction.new(self, fname, "static inline #{ft}")
       f.register_local(ft,'res',"(#{ft})#{@name}_malloc(sizeof(#{type_map(for_type,false)}))")
       f.body << GMCommand.new(f, "if(!res) #{@name}_memory_err(\"Memory allocation failed for #{for_type}.\")")
+      f.body << GMCommand.new(f, "memset(res, 0, sizeof(#{type_map(for_type,false)}))")
       f.body << GMCommand.new(f, "return res")
       @body << f
     end
@@ -452,17 +453,14 @@ class GMCommand < GMGenericChild
     else
       @cmd = parse_side(cmd)
       if @cmd[0] == :acc
-        # TODO:  YOU ARE HERE
-        # mark:
-        #   - allocate if not allocated (check w/ NULL)
-        #   - set pointer
-        # term:
-        #   - set length. the end.
         gmf.register_local(gm.type_map('STRING'), @cmd[1][1], gm.allocator('STRING'))
         @operator = '='
-        if @cmd[1][0] == 'mark'
+        v = @cmd[1][1]
+        if @cmd[1][0] == 'mark' && @parent.is_a?(GMFunction)
           @lside = @cmd[1][1]+'->start'
           @rside = 'p->curr'
+        elsif @cmd[1][0] == 'mark'
+          @fullcmd = ["if(!#{v})  #{v} = #{gm.allocator('STRING')};", "#{v}->start = p->curr;"]
         else
           @lside = @cmd[1][1]+'->length'
           @rside = 'p->curr - '+@cmd[1][1]+'->start'
