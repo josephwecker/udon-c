@@ -172,7 +172,8 @@ void udon_reset_parser(_UdonParseState *p) {
     p->_public.error.data_file       = "";
     p->_public.error.data_line       = 0;
     p->_public.error.data_column     = 0;
-    p->_public.warnings              = _new_udon_list(p);
+    p->_public.warnings              = NULL;
+    p->_public._warnings__tail       = NULL;
 
     p->line                          = 1;
     p->column                        = 1;
@@ -1065,6 +1066,7 @@ static inline UdonNode * _new_udon_node(_UdonParseState *p) {
     UdonNode * res               = (UdonNode *)udon_malloc(sizeof(UdonNode));
     if(!res) udon_memory_err("Memory allocation failed for Node.");
     memset(res, 0, sizeof(UdonNode));
+    res->ll.listable_type        = UDON_NODE_TYPE;
     return res;
 }
 
@@ -1073,6 +1075,7 @@ static inline UdonData * _new_udon_data(_UdonParseState *p) {
     UdonData * res               = (UdonData *)udon_malloc(sizeof(UdonData));
     if(!res) udon_memory_err("Memory allocation failed for Data.");
     memset(res, 0, sizeof(UdonData));
+    res->ll.listable_type        = UDON_DATA_TYPE;
     return res;
 }
 
@@ -1081,6 +1084,7 @@ static inline UdonString * _new_udon_string(_UdonParseState *p) {
     UdonString * res             = (UdonString *)udon_malloc(sizeof(UdonString));
     if(!res) udon_memory_err("Memory allocation failed for STRING.");
     memset(res, 0, sizeof(UdonString));
+    res->ll.listable_type        = UDON_STRING_TYPE;
     return res;
 }
 

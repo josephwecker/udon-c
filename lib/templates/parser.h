@@ -35,7 +35,6 @@ extern "C" {
 
 
 enum GenmListableTypes {
-    GENM_STRING_TYPE,
     {% for t in listy %}GENM_{{t|up}}_TYPE,
     {% endfor %}
 };
@@ -69,7 +68,7 @@ extern GenmError genm_global_error;
 
 /* --- Linked List base --- */
 struct GenmList {
-    GenmListableTypes listable_type;
+    enum GenmListableTypes listable_type;
     struct GenmList * next;
 };
 typedef struct GenmList GenmList;
@@ -132,7 +131,8 @@ struct GenmParseState {
     /* --- Result State --- */
     void *           result;
     GenmError        error;
-    GenmList *       warnings;
+    GenmString *     warnings;
+    GenmString *     _warnings__tail; /* Points to last warning in linked list */
 };
 typedef struct GenmParseState GenmParseState;
 

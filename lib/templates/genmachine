@@ -82,7 +82,7 @@ class GM
     @used_types = {}
     @name = ''
     @body = [];   @epoints = []
-    @enums = [];  @structs = [];  @listy = ['LIST']
+    @enums = [];  @structs = [];  @listy = ['LIST', 'STRING']
     @enum_names = []
     @checked_newline = false
     @allocators = {}
@@ -197,11 +197,13 @@ class GM
   def add_allocators
     return if @all_ensured
     @allocators.each do |for_type, fname|
+      set_ltype = listy.include?(for_type)
       ft = type_map(for_type)
       f = GMFunction.new(self, fname, "static inline #{ft}")
       f.register_local(ft,'res',"(#{ft})#{@name}_malloc(sizeof(#{type_map(for_type,false)}))")
       f.body << GMCommand.new(f, "if(!res) #{@name}_memory_err(\"Memory allocation failed for #{for_type}.\")")
       f.body << GMCommand.new(f, "memset(res, 0, sizeof(#{type_map(for_type,false)}))")
+      f.body << GMCommand.new(f, "res->ll{.}listable_type = #{name.upcase}_#{for_type.upcase}_TYPE") if set_ltype
       f.body << GMCommand.new(f, "return res")
       @body << f
     end
@@ -343,7 +345,8 @@ class GMStruct < GMGenericChild
     @struct_parent = @name[1]
     @name = @name[0]
 
-    gm.listy << @name if gm.listy.include?(@struct_parent)
+    # For now assume all structs are listy
+    gm.listy << @name #if gm.listy.include?(@struct_parent)
   end
 
   def parse
@@ -520,7 +523,9 @@ class GMCommand < GMGenericChild
            ['COL','p->column'],          ['CURR', '*(p->curr)'],
            ['C',  'self_res->children'], ['α',   'greek_alpha'],
            ['β', 'greek_beta']]
-    map.reduce(cmd.strip.gsub(/\.(?!"|result)/,'->')) do |val, mapping|
+    cmd = cmd.strip.gsub(/{\.}/,'<DOT>')
+    cmd = cmd.gsub(/\.(?!"|result)/,'->').gsub('<DOT>','.')
+    map.reduce(cmd) do |val, mapping|
       from, to = mapping
       val.gsub(/(?<=^|[^a-zA-Z0-9_])#{from}(?=$|[^a-zA-Z0-9_])/u, to)
     end

@@ -35,8 +35,10 @@ extern "C" {
 
 
 enum UdonListableTypes {
-    UDON_STRING_TYPE,
     UDON_LIST_TYPE,
+    UDON_STRING_TYPE,
+    UDON_NODE_TYPE,
+    UDON_DATA_TYPE,
     
 };
 
@@ -69,7 +71,7 @@ extern UdonError udon_global_error;
 
 /* --- Linked List base --- */
 struct UdonList {
-    UdonListableTypes listable_type;
+    enum UdonListableTypes listable_type;
     struct UdonList * next;
 };
 typedef struct UdonList UdonList;
@@ -123,11 +125,14 @@ struct UdonNode {
     uint64_t                     source_line;
     uint64_t                     source_column;
     UdonString *                 name;
+    UdonString *                 _name__tail;
     UdonString *                 id;
+    UdonString *                 _id__tail;
     UdonList *                   classes;
     UdonList *                   _classes__tail;
     UdonDict *                   attributes;
     struct UdonNode *            children;
+    struct UdonNode *            _children__tail;
 };
 typedef struct UdonNode          UdonNode;
 
@@ -161,7 +166,8 @@ struct UdonParseState {
     /* --- Result State --- */
     void *           result;
     UdonError        error;
-    UdonList *       warnings;
+    UdonString *     warnings;
+    UdonString *     _warnings__tail; /* Points to last warning in linked list */
 };
 typedef struct UdonParseState UdonParseState;
 

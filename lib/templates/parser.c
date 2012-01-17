@@ -162,7 +162,8 @@ void genm_reset_parser(_GenmParseState *p) {
     p->_public.error.data_file       = "";
     p->_public.error.data_line       = 0;
     p->_public.error.data_column     = 0;
-    p->_public.warnings              = _new_genm_list(p);
+    p->_public.warnings              = NULL;
+    p->_public._warnings__tail       = NULL;
 
     p->line                          = 1;
     p->column                        = 1;
