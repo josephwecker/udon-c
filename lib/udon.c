@@ -109,17 +109,17 @@ struct _UdonParseState {
 
 /* --- Private prototypes --- */
 
-static inline UdonNode * _udon_node(_UdonParseState *p);
-static inline UdonData * _udon_value(_UdonParseState *p);
-static inline UdonData * _udon_data(_UdonParseState *p);
-static inline UdonString * _udon_label(_UdonParseState *p);
-static inline UdonString * _udon_id(_UdonParseState *p);
- _udon_block_comment(_UdonParseState *p);
-static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p);
-static inline UdonString * _udon_label__s_delim(_UdonParseState *p);
-static inline UdonNode * _new_udon_node(_UdonParseState *p);
-static inline UdonData * _new_udon_data(_UdonParseState *p);
-static inline UdonString * _new_udon_string(_UdonParseState *p);
+static inline UdonNode *     _udon_node(_UdonParseState *p);
+static inline UdonData *     _udon_value(_UdonParseState *p);
+static inline UdonData *     _udon_data(_UdonParseState *p);
+static inline UdonString *   _udon_label(_UdonParseState *p);
+static inline UdonString *   _udon_id(_UdonParseState *p);
+static inline void           _udon_block_comment(_UdonParseState *p);
+static inline UdonNode *     _udon_node__s_child_shortcut(_UdonParseState *p);
+static inline UdonString *   _udon_label__s_delim(_UdonParseState *p);
+static inline UdonNode *     _new_udon_node(_UdonParseState *p);
+static inline UdonData *     _new_udon_data(_UdonParseState *p);
+static inline UdonString *   _new_udon_string(_UdonParseState *p);
 
 
 /*----------------- IMPLEMENTATION ---------------------
@@ -803,7 +803,7 @@ static inline UdonString * _udon_id(_UdonParseState *p) {
 }
 
 
- _udon_block_comment(_UdonParseState *p) {
+static inline void _udon_block_comment(_UdonParseState *p) {
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column - 1;
     s_main:

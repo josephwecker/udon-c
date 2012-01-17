@@ -176,7 +176,7 @@ extern _UdonParseState  *udon_init_from_file(char *filename);
 extern UdonParseState   *udon_state(_UdonParseState *p);
 extern void              udon_reset_parser(_UdonParseState *p);
 extern int               udon_free_parser(_UdonParseState *p);
-extern int udon_parse(_UdonParseState *p);
+extern int                          udon_parse(_UdonParseState *p);
 
 
 #ifdef __cplusplus

@@ -545,6 +545,10 @@ class GMFunction < GMGenericChild
   attr_accessor :ftype, :expected, :implemented, :eof_handler,
     :needs_generic_eof, :warnings, :public_prototype
   def initialize(parent, name, return_type, inner=false)
+    if return_type.nil?
+      return_type = "static inline void"
+      inner = false
+    end
     super(parent, name)
     @expected          = {}  # states and substates that will be jumped to
     @implemented       = {}
@@ -608,7 +612,7 @@ class GMFunction < GMGenericChild
   end
 
   def to_proto_str(ind=0)
-    res = dent(ind)+"#{@ftype} #{@name}(_#{gm.name.capitalize}ParseState *p);"
+    res = dent(ind)+"#{@ftype.ljust(COL_2-INDENTS,' ')} #{@name}(_#{gm.name.capitalize}ParseState *p);"
   end
 
   def to_str(ind=0)
