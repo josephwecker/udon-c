@@ -16,10 +16,6 @@
 #include <unistd.h>
 #include <string.h>
 
-#define _UDON_EOF p->curr == p->end
-#define _UDON_ADVANCE_COL()  {p->column ++; p->curr ++;}
-#define _UDON_ADVANCE_LINE() {p->column=1; p->line ++; p->curr ++;}
-
 /* --- Error handling --- */
 struct UdonError udon_global_error = {
     .code            = UDON_OK,
@@ -73,6 +69,51 @@ struct UdonError udon_global_error = {
 }
 
 
+/* --- Scanning --- */
+#define _UDON_EOF p->curr >= p->end
+#define _UDON_ADVANCE_COL()  {p->column ++; p->curr ++;}
+#define _UDON_ADVANCE_LINE() {p->column=1; p->line ++; p->curr ++;}
+
+#define udon_q_haszero(v)   ((v) - UINT64_C(0x0101010101010101)) & ~(v) & UINT64_C(0x8080808080808080)
+#define udon_q_hasval(v,n)  (udon_q_haszero((v) ^ (~UINT64_C(0)/255 * (n))))
+
+#define _UDON_QSCAN_TO1(c1) {\
+    uint64_t *qcurr = (uint64_t *)p->curr;\
+    while((qcurr <= p->qend) && !udon_q_hasval(*qcurr,(c1))) qcurr++;\
+    p->curr = (char *)qcurr;\
+    while(1) {\
+        if(p->curr >= p->end) goto _eof;\
+        if(*(p->curr) == (c1)) break;\
+        p->curr ++;\
+    }\
+}
+
+#define _UDON_QSCAN_TO3(c1,c2,c3) {\
+    uint64_t *qcurr = (uint64_t *)p->curr;\
+    while((qcurr <= p->qend) && !(\
+                udon_q_hasval(*qcurr,(c1)) || \
+                udon_q_hasval(*qcurr,(c2)) || \
+                udon_q_hasval(*qcurr,(c3))))\
+        qcurr++;\
+    p->curr = (char *)qcurr;\
+    while(1) {\
+        if(p->curr >= p->end) goto _eof;\
+        if(*(p->curr) == (c1) || *(p->curr) == (c2) || *(p->curr) == (c3)) break;\
+        p->curr ++;\
+    }\
+}
+
+#define _UDON_QSCAN_PAST1(c1) {\
+    _UDON_QSCAN_TO1((c1));\
+    _UDON_ADVANCE_COL();\
+}
+
+#define _UDON_QSCAN_PAST1_NL(c1) {\
+    _UDON_QSCAN_TO1((c1));\
+    _UDON_ADVANCE_LINE();\
+}
+
+
 /* --- Dict --- */
 struct UdonDictEntry {
     UdonString *key;
@@ -100,7 +141,6 @@ struct _UdonParseState {
     uint64_t         column;
 
     char             *curr;
-    uint64_t         *qcurr;
     char             *end;
     uint64_t         *qend;
     size_t           qsize;     /* Automatically calculated, for quickscans. */
@@ -178,10 +218,9 @@ void udon_reset_parser(_UdonParseState *p) {
     p->line                          = 1;
     p->column                        = 1;
     p->curr                          = p->_public.source_buffer;
-    p->qcurr                         = (uint64_t *)p->_public.source_buffer;
     p->end                           = &(p->_public.source_buffer[p->_public.source_size - 1]);
     p->qsize                         = p->_public.source_size >> 3; /* size in 64bit chunks */
-    p->qend                          = &(p->qcurr[p->qsize - 1]);
+    p->qend                          = (uint64_t *)(p->end);
 
     p->curr[p->_public.source_size]  = 0; /* last chance null terminator, just in case. */
 }
@@ -491,15 +530,15 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
                 case '|':   /*-- attribute.grim */
                     _UDON_ADVANCE_COL();
                     g            = _udon_node(p);
-                    self_res->attributes = g;
+                    self_res->attributes[g->name] = g;
                     goto s_child;
                 case '[':   /*-- attribute.grim2 */
                     g            = _udon_node(p);
-                    self_res->attributes = g;
+                    self_res->attributes[g->name] = g;
                     goto s_child;
                 default:    /*-- attribute.normal */
                     key          = _udon_label(p);
-                    self_res->attributes = _udon_value(p);
+                    self_res->attributes[key] = _udon_value(p);
                     goto s_child;
             }
         }
@@ -546,8 +585,8 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
                     _UDON_ADVANCE_LINE();
                     goto s_newline;
                 case '#':   /*-- disamb.comment */
-                    _UDON_ADVANCE_COL();
-                    goto s_newline;
+                    _UDON_QSCAN_PAST1_NL('\n');
+                    goto _inner_s_newline;
                 case '|':
                 case '.':
                 case '!':
@@ -607,7 +646,7 @@ static inline UdonData * _udon_value(_UdonParseState *p) {
                     _UDON_ADVANCE_LINE();
                     goto s_linestart;
                 case '#':   /*-- linestart.comment */
-                    _UDON_ADVANCE_COL();
+                    _UDON_QSCAN_PAST1_NL('\n');
                     goto s_linestart;
                 default:    /*-- linestart.value */
                     if(p->column<=ipar) {
@@ -646,7 +685,7 @@ static inline UdonData * _udon_data(_UdonParseState *p) {
     UdonString * a               = _new_udon_string(p);
     a->start                     = p->curr;
     s_main:
-        _UDON_ADVANCE_COL();
+        _UDON_QSCAN_TO1('\n');
         {
             if(a && a->start) {
                 if(!a->length) a->length = p->curr - a->start;
@@ -662,7 +701,7 @@ static inline UdonData * _udon_data(_UdonParseState *p) {
                 a = NULL;
             }
         }
-        _UDON_ADVANCE_COL();
+        _UDON_ADVANCE_LINE();
     s_newline:
         if(p->column>ibase) {
             if(!a)  a = _new_udon_string(p);
@@ -807,9 +846,9 @@ static inline void _udon_block_comment(_UdonParseState *p) {
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column - 1;
     s_main:
-        _UDON_ADVANCE_COL();
+        _UDON_QSCAN_PAST1_NL('\n');
     s_next:
-        _UDON_ADVANCE_COL();
+        _UDON_QSCAN_TO3('^',' ','\t');
         if(p->column<=ipar) return;
 }
 
@@ -920,15 +959,15 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                 case '|':   /*-- attribute.grim */
                     _UDON_ADVANCE_COL();
                     g            = _udon_node(p);
-                    self_res->attributes = g;
+                    self_res->attributes[g->name] = g;
                     goto s_child;
                 case '[':   /*-- attribute.grim2 */
                     g            = _udon_node(p);
-                    self_res->attributes = g;
+                    self_res->attributes[g->name] = g;
                     goto s_child;
                 default:    /*-- attribute.normal */
                     key          = _udon_label(p);
-                    self_res->attributes = _udon_value(p);
+                    self_res->attributes[key] = _udon_value(p);
                     goto s_child;
             }
         }

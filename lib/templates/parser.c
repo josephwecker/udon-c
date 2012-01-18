@@ -16,10 +16,6 @@
 #include <unistd.h>
 {% if use_gmdict %}#include <string.h>{% endif %}
 
-#define _GENM_EOF p->curr == p->end
-#define _GENM_ADVANCE_COL()  {p->column ++; p->curr ++;}
-#define _GENM_ADVANCE_LINE() {p->column=1; p->line ++; p->curr ++;}
-
 /* --- Error handling --- */
 struct GenmError genm_global_error = {
     .code            = GENM_OK,
@@ -73,6 +69,51 @@ struct GenmError genm_global_error = {
 }
 
 
+/* --- Scanning --- */
+#define _GENM_EOF p->curr >= p->end
+#define _GENM_ADVANCE_COL()  {p->column ++; p->curr ++;}
+#define _GENM_ADVANCE_LINE() {p->column=1; p->line ++; p->curr ++;}
+
+#define genm_q_haszero(v)   ((v) - UINT64_C(0x0101010101010101)) & ~(v) & UINT64_C(0x8080808080808080)
+#define genm_q_hasval(v,n)  (genm_q_haszero((v) ^ (~UINT64_C(0)/255 * (n))))
+
+#define _GENM_QSCAN_TO1(c1) {\
+    uint64_t *qcurr = (uint64_t *)p->curr;\
+    while((qcurr <= p->qend) && !genm_q_hasval(*qcurr,(c1))) qcurr++;\
+    p->curr = (char *)qcurr;\
+    while(1) {\
+        if(p->curr >= p->end) goto _eof;\
+        if(*(p->curr) == (c1)) break;\
+        p->curr ++;\
+    }\
+}
+
+#define _GENM_QSCAN_TO3(c1,c2,c3) {\
+    uint64_t *qcurr = (uint64_t *)p->curr;\
+    while((qcurr <= p->qend) && !(\
+                genm_q_hasval(*qcurr,(c1)) || \
+                genm_q_hasval(*qcurr,(c2)) || \
+                genm_q_hasval(*qcurr,(c3))))\
+        qcurr++;\
+    p->curr = (char *)qcurr;\
+    while(1) {\
+        if(p->curr >= p->end) goto _eof;\
+        if(*(p->curr) == (c1) || *(p->curr) == (c2) || *(p->curr) == (c3)) break;\
+        p->curr ++;\
+    }\
+}
+
+#define _GENM_QSCAN_PAST1(c1) {\
+    _GENM_QSCAN_TO1((c1));\
+    _GENM_ADVANCE_COL();\
+}
+
+#define _GENM_QSCAN_PAST1_NL(c1) {\
+    _GENM_QSCAN_TO1((c1));\
+    _GENM_ADVANCE_LINE();\
+}
+
+
 {% if use_gmdict %}/* --- Dict --- */
 struct GenmDictEntry {
     GenmString *key;
@@ -100,10 +141,8 @@ struct _GenmParseState {
     uint64_t         column;
 
     char             *curr;
-    uint64_t         *qcurr;
     char             *end;
     uint64_t         *qend;
-    size_t           qsize;     /* Automatically calculated, for quickscans. */
     char             *alpha;    /* Used for accumulating. possibly depricated... */
 };
 
@@ -168,10 +207,8 @@ void genm_reset_parser(_GenmParseState *p) {
     p->line                          = 1;
     p->column                        = 1;
     p->curr                          = p->_public.source_buffer;
-    p->qcurr                         = (uint64_t *)p->_public.source_buffer;
     p->end                           = &(p->_public.source_buffer[p->_public.source_size - 1]);
-    p->qsize                         = p->_public.source_size >> 3; /* size in 64bit chunks */
-    p->qend                          = &(p->qcurr[p->qsize - 1]);
+    p->qend                          = (uint64_t *)(p->end);
 
     p->curr[p->_public.source_size]  = 0; /* last chance null terminator, just in case. */
 }

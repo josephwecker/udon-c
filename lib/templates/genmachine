@@ -4,12 +4,13 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   - support for void functions (e.g., block_comment)
-#   - support for advance-past and advance-to
 #   - each function also takes an optional "S" which it uses instead of creating one (see .value2)
 #   - make sure eof checks happen when there are no switch statements (e.g. block_comment)
+#   - get all dict stuff working correctly
 #
 #   (Extra credit)
+#   * have quickscan go to local eof when appropriate instead of always the
+#     function-scope eof action
 #   * support negative advance-to character classes (e.g.  ->[^ \t])
 #   * adjust TERM by some position (TERM(a,-1))
 #   * types automatically include a member field that indicates the function that
@@ -406,9 +407,14 @@ class GMCommand < GMGenericChild
     @rside    = nil
     @fullcmd  = nil
     if cmd.start_with? '/'; @cmd = gm.parse_location(cmd)[1]
-    elsif cmd == '->'
+    elsif cmd =~ /^\s*(\[(?<adv_past>[^\]]+)\])?\s*->\s*(\[(?<adv_to>[^\]]+)\])?\s*$/
       @operator = :advance
-      $goto_eofcheck = true
+      @lside = $~[:adv_past]
+      @rside = $~[:adv_to]
+      $goto_eofcheck = !(@lside || @rside)
+      @lside = GMCase.new(self, @lside) if @lside
+      @rside = GMCase.new(self, @rside) if @rside
+      $goto_eofcheck = !(@lside || @rside)
     elsif cmd =~ /[^\(]((!|=|<|(?<!-)>|\+|-(?!>))+)/
       @operator = $1
       lside, rside = cmd.split(@operator)
@@ -493,10 +499,19 @@ class GMCommand < GMGenericChild
     else
       if @cmd then return dent(ind)+outv(@cmd)+";\n"
       elsif @operator == :advance
-        if gm.checked_newline?
+        if @lside or @rside
+          chars = @lside.nil? ? @rside.chars : @lside.chars
+          mac = "_#{gm.name.upcase}_QSCAN_#{@lside.nil? ? "TO" : "PAST"}#{chars.size}"
+          mac += '_NL' if chars.include?('\\n') && @rside.nil?
+          args = chars.map{|c| "'#{c}'"}.join(',')
+          gm.checked_newline = (chars == ['\\n'])
+          return dent(ind)+mac+'('+args+");\n"
+        elsif gm.checked_newline?
           gm.checked_newline = false
           return dent(ind)+'_'+gm.name.upcase+"_ADVANCE_LINE();\n"
-        else return(dent(ind)+'_'+gm.name.upcase+"_ADVANCE_COL();\n") end
+        else
+          return(dent(ind)+'_'+gm.name.upcase+"_ADVANCE_COL();\n")
+        end
       elsif @operator
         subind = (@operator.length == 1 ? COL_2 : COL_2-1) - (ind*INDENTS)
         return dent(ind)+outv(@lside).ljust(subind,' ')+" #{@operator} #{outv(@rside)};\n"
@@ -726,6 +741,7 @@ end
 
 
 class GMCase < GMGenericChild
+  attr_accessor :chars
   def initialize(par, nm)
     super(par, nm)
     if @name.nil?
@@ -864,10 +880,14 @@ gm.parse do |parser|
   break if i >= content.size
   c = content[i]
   next if c =~ /^\s*$/
+  tag = id = rest = nil
   tag = c[/^(\.|[^ \[]+)/]
-  id  = c[/\[[^\]]*/]
+  id  = c[/\[[^\]]*/] unless(tag.nil? or tag.strip=='')
   id  = id[1..-1] unless id.nil?
-  rest = c.gsub(/^(\.|[^ \[]+)/,'').gsub(/\[[^\]]*\]/,'').strip
+  rest = c
+  rest.gsub!(/^(\.|[^ \[]+)/,'') unless tag.nil?
+  rest.gsub!(/\[[^\]]*\]/,'') unless id.nil?
+  rest.strip!
   [(tag || '').strip.downcase, id || '', rest || '']
 end
 
