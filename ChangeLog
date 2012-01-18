@@ -1,3 +1,31 @@
+[2012-01-17 | ca6bd25 | <jwecker@justin.tv>]  Basic quickscanning implemented.
+
+[2012-01-17 | 680e156 | <jwecker@justin.tv>]  Fixed parsing groups that return nothing, (and simple formatting)
+
+[2012-01-17 | 0464bfa | <jwecker@justin.tv>]  Fix logic (don't append unmarked strings) and updated todo lists
+
+[2012-01-17 | c3d59ef | <jwecker@justin.tv>]  Correct linked-list+deterministic-string representations throughout.
+
+[2012-01-17 | 8988ad9 | <jwecker@justin.tv>]  Wipe to zero on allocate for tests, and allocate strings on the fly when necessary.
+
+[2012-01-17 | 416e2cd | <joseph.wecker@gmail.com>]  Getting string accumulation working better. TERM + auto-mark
+
+[2012-01-16 | eefce98 | <joseph.wecker@gmail.com>]  Some notes and positioning to get string list members working correctly.
+
+[2012-01-16 | 1287729 | <joseph.wecker@gmail.com>]  added right-bracket matching and shortened special classes
+
+[2012-01-14 | acc822d | <joseph.wecker@gmail.com>]  Basic v0.1 draft of the statemachine done. Still needs some specialized EOF handlers etc. but need to catch genmachine up again first.
+
+[2012-01-14 | 7a876d3 | <joseph.wecker@gmail.com>]  More work on the statemachine- usine new genmachine features that aren't working yet, so udon.c/h are broken temporarily.
+
+[2012-01-13 | baf52f7 | <jwecker@justin.tv>]  fleshing out state-machine for basic node values
+
+[2012-01-13 | 967896e | <jwecker@justin.tv>]  Fleshed out the basic syn highlight for genmachine
+
+[2012-01-13 | 182ae18 | <joseph.wecker@gmail.com>]  Quick syntax highlight
+
+[2012-01-13 | 889a1ff | <joseph.wecker@gmail.com>]  Making a mess- working on the state machine definition and fixing listy stuff.
+
 [2012-01-12 | dea328e | <jwecker@justin.tv>]  more statemachine definition for values and starting to generalize linked lists more.
 
 [2012-01-12 | 799266a | <jwecker@justin.tv>]  Simplified udon node structure

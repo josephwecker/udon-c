@@ -143,7 +143,6 @@ struct _UdonParseState {
     char             *curr;
     char             *end;
     uint64_t         *qend;
-    size_t           qsize;     /* Automatically calculated, for quickscans. */
     char             *alpha;    /* Used for accumulating. possibly depricated... */
 };
 
@@ -219,7 +218,6 @@ void udon_reset_parser(_UdonParseState *p) {
     p->column                        = 1;
     p->curr                          = p->_public.source_buffer;
     p->end                           = &(p->_public.source_buffer[p->_public.source_size - 1]);
-    p->qsize                         = p->_public.source_size >> 3; /* size in 64bit chunks */
     p->qend                          = (uint64_t *)(p->end);
 
     p->curr[p->_public.source_size]  = 0; /* last chance null terminator, just in case. */
@@ -367,8 +365,8 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
     uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
-    g;
-    key;
+    UdonNode * g;
+    UdonString * key;
     self_res->node_type          = UDON_NORMAL;
     s_init:
         if(_UDON_EOF) {
@@ -858,8 +856,8 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
     uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
-    g;
-    key;
+    UdonNode * g;
+    UdonString * key;
     self_res->node_type          = UDON_NORMAL;
     s_child_shortcut:
         self_res->node_type      = UDON_ROOT;

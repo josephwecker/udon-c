@@ -428,6 +428,8 @@ class GMCommand < GMGenericChild
           elsif @rside[0] == :type
             ltype = gm.type_map(@rside[1])
             @rside[1] = gm.allocator(@rside[1])
+          elsif @rside[0] == :location
+            ltype = @rside
           end
 
           if @register
@@ -630,11 +632,24 @@ class GMFunction < GMGenericChild
     res = dent(ind)+"#{@ftype.ljust(COL_2-INDENTS,' ')} #{@name}(_#{gm.name.capitalize}ParseState *p);"
   end
 
+  def get_location_type(ltype)
+    ltype = ltype[1][0..-4]
+    gm.body.each do |b|
+      if b.is_a?(GMFunction)
+        if b.name == ltype
+          return b.ftype.gsub(/\bstatic\b/,'').gsub(/\binline\b/,'')
+        end
+      end
+    end
+    return 'void *'
+  end
+
   def to_str(ind=0)
     res = dent(ind)+"#{@ftype} #{@name}(_#{gm.name.capitalize}ParseState *p) {\n"
     ind = 1
     @locals.each do |lname, ltype_init|
       ltype, linit = ltype_init
+      ltype = get_location_type(ltype) if ltype.is_a?(Array)
       decl = ltype.nil? ? lname : ltype + ' ' + lname
       cmd = decl+(linit ? "= #{linit}" : '')
       res += GMCommand.new(self, cmd, false, false).to_str(ind)
