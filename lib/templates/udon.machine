@@ -5,16 +5,13 @@
 
 |struct[Node]
   |node_type     NodeType
+  |children      LIST
   |source_line   Z+
   |source_column Z+
   |name          STRING
   |id            STRING
   |classes       LIST
   |attributes    DICT
-  |children      Node
-
-|struct[Data]
-  |lines         LIST
 
 |entry-point /node:child-shortcut
 
@@ -23,7 +20,7 @@
   |state[:init]
     |eof                  | S.node_type=BLANK                      |return S
     |c[\n]    |.value1    | -> | S.node_type=BLANK                 |>> :child
-    |c[ \t]   |.value2    | -> | S = /value                        |return S
+    |c[ \t]   |.value2    |                                        |>> :child.lead
     |c[:]     |.attr      | ->                                     |>> :attribute
     |c[<L>]   |.id        |                                        |>> :identity.id
     |c[.]     |.class     |                                        |>> :identity.class
@@ -46,47 +43,27 @@
   |state[:child2]
     |c[<P>]   |.node      | -> | C << /node                        |>> :child
     |c[:]     |.attribute | ->                                     |>> :attribute
-    |default  |.value     |if[inl] | C << /value                   |>> :child
-                          |endif   | C << /data                    |>> :child
+    |default  |.value     |if[inl] | C <<< /value                  |>> :child
+                          |else | MARK(d)| [\n]->| TERM(d)| C<<<d  |>> :child
   |state[:attribute]
     |c[<P>]   |.grim      | -> | g=/node | S.attributes[g.name]=g  |>> :child
     |c[<L>]   |.grim2     |    | g=/node | S.attributes[g.name]=g  |>> :child
     |default  |.normal    | key=/label | S.attributes[key]=/value  |>> :child
 
-#-------------+-----------+----------------------------------------+----------------
-|function[value:Data]     | ibase = COL | ipar=COL-1 | MARK(a)
-  |eof                    | S.lines <<< a                          |return S
+
+|function[value:STRING]   | MARK
+  |eof                    | TERM                                   |return S
   |state[:main]
-    |c[ \t]   |.space     | TERM(a) | ->                           |>> :disamb
-    |c[\n]    |.newline   | TERM(a) | ->                           |>> :newline
+    |c[ \t]   |.space     | TERM | ->                              |>> :disamb
+    |c[\n]    |.done1     | TERM                                   |return S
+    |c[#]     |.comment   | TERM | ->[\n]                          |return S
     |default  |.collect   | ->                                     |>>
   |state[:disamb]
     |c[ \t]   |.space     | ->                                     |>>
-    |c[\n]    |.newline   | ->                                     |>> :newline
-    |c[#]     |.comment   | [\n]->                                 |>> :newline
-    |c[<P>.!:]|.done      | S.lines <<< a                          |return S
-    |default  |.collect   | ->                                     |>> :main
-  |state[:newline]        | S.lines <<< a
-  |state[:linestart]
-    |if[COL > ibase]      | MARK(a)                                |>> :main
-    |c[ \t]   |.indent    | ->                                     |>>
-    |c[\n]    |.newline   | ->                                     |>>
-    |c[#]     |.comment   | [\n]->                                 |>>
-    |default  |.value
-      |if[COL <= ipar]                                             |return S
-      |else               | MARK(a)                                |>> :main
-
-#-------------+-----------+----------------------------------------+----------------
-|function[data:Data]      | ibase = COL | ipar=COL-1 | MARK(a)
-  |eof                    | S.lines <<< a                          |return S
-  |state[:main]           | ->[\n] | S.lines <<< a | ->            |
-  |state[:newline]
-    |if[COL > ibase]      | MARK(a)                                |>> :main
-    |c[ \t]   |.indent    | ->                                     |>>
-    |c[\n]    |.newline   | ->                                     |>>
-    |default  |.value
-      |if[COL <= ipar]                                             |return S
-      |else               | MARK(a)                                |>> :main
+    |c[\n]    |.done1     | TERM                                   |return S
+    |c[#]     |.comment   | ->[\n]                                 |return S
+    |c[<P>.!:]|.done2     |                                        |return S
+    |default  |.nevermind |                                        |>> :main.collect
 
 #-------------+-----------+----------------------------------------+----------------
 |function[label:STRING]   | lvl=0 | MARK
@@ -116,7 +93,8 @@
     |default  |.collect   | ->                                     |>>
 
 #-------------+-----------+----------------------------------------+----------------
-|function[block_comment]  | ibase = COL | ipar = COL - 1
+|function[block_comment]  | ipar = COL - 1
+  |eof                    |                                        |return
   |state[:main]           | [\n]->                                 |
   |state[:next]           | ->[^ \t]
     |if[COL <= ipar]                                               |return

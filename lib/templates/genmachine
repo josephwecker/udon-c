@@ -4,8 +4,7 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   - each function also takes an optional "S" which it uses instead of creating one (see .value2)
-#   - make sure eof checks happen when there are no switch statements (e.g. block_comment)
+#   - get rid of extra __tail members for single strings
 #   - get all dict stuff working correctly
 #
 #   (Extra credit)
@@ -446,16 +445,18 @@ class GMCommand < GMGenericChild
         lsmain, lsmember = outv(@lside).split('->')
         tail = "#{lsmain}->_#{lsmember}__tail"
         ltype = gm.type_map('LIST')
+        stype = gm.type_map('STRING')
         r = outv(@rside)
         ei = ''
-        @fullcmd = ['{']
+        @fullcmd = ['{',
+                    "    #{ltype} _item  = (#{ltype})(#{r});"]
         if @operator == '<<<'
-          @fullcmd << "    if(#{r} && #{r}->start) {"
-          @fullcmd << "        if(!#{r}->length) #{r}->length = p->curr - #{r}->start;"
+          sitm = "((#{stype})_item)"
+          @fullcmd << "    if(_item && #{sitm}->start) {"
+          @fullcmd << "        if(!#{sitm}->length) #{sitm}->length = p->curr - #{sitm}->start;"
           ei = '    '
         end
         @fullcmd += [
-            ei+"    #{ltype} _item  = (#{ltype})(#{outv(@rside)});",
             ei+"    #{ltype} *_acc_head = (#{ltype}*) &(#{outv(@lside)});",
             ei+"    #{ltype} *_acc_tail = (#{ltype}*) &(#{tail});",
             ei+"    if(*_acc_tail == NULL) {",
@@ -465,7 +466,7 @@ class GMCommand < GMGenericChild
             ei+"        *_acc_tail = _item;",
             ei+"    }"]
         if @operator == '<<<'
-          @fullcmd << "        #{r} = NULL;"
+          @fullcmd << "        #{r} = NULL;" unless r.include?('(')
           @fullcmd << "    }"
         end
         @fullcmd << '}'

@@ -38,7 +38,6 @@ enum UdonListableTypes {
     UDON_LIST_TYPE,
     UDON_STRING_TYPE,
     UDON_NODE_TYPE,
-    UDON_DATA_TYPE,
     
 };
 
@@ -122,6 +121,8 @@ struct UdonNode {
     UdonList                     ll;
 
     UdonNodeType                 node_type;
+    UdonList *                   children;
+    UdonList *                   _children__tail;
     uint64_t                     source_line;
     uint64_t                     source_column;
     UdonString *                 name;
@@ -131,19 +132,8 @@ struct UdonNode {
     UdonList *                   classes;
     UdonList *                   _classes__tail;
     UdonDict *                   attributes;
-    struct UdonNode *            children;
-    struct UdonNode *            _children__tail;
 };
 typedef struct UdonNode          UdonNode;
-
-
-struct UdonData {
-    UdonList                     ll;
-
-    UdonList *                   lines;
-    UdonList *                   _lines__tail;
-};
-typedef struct UdonData          UdonData;
 
 
 

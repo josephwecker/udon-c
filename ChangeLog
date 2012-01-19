@@ -1,3 +1,5 @@
+[2012-01-17 | befa22c | <joseph.wecker@gmail.com>]  detect type of local variable initialized with function call.
+
 [2012-01-17 | ca6bd25 | <jwecker@justin.tv>]  Basic quickscanning implemented.
 
 [2012-01-17 | 680e156 | <jwecker@justin.tv>]  Fixed parsing groups that return nothing, (and simple formatting)
