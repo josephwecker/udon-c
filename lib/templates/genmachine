@@ -4,7 +4,6 @@
 # This is super-ghetto code being used to generate super-awesome-fast code,
 # which is what I really care about.
 # TODO:
-#   - get rid of extra __tail members for single strings
 #   - get all dict stuff working correctly
 #
 #   (Extra credit)
@@ -368,7 +367,7 @@ class GMStruct < GMGenericChild
         gmt = gm.type_map(c[2])
         gmt = 'struct ' + gmt if c[2] == @name
         @body << [c[0], gmt]
-        @body << ['_' + c[0] + '__tail', gmt] if gm.listy.include?(c[2])
+        @body << ['_' + c[0] + '__tail', gmt] if (gm.listy.include?(c[2]) && (c[2] != 'STRING'))
         c = yield
       end
     end

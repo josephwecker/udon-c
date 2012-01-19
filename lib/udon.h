@@ -126,9 +126,7 @@ struct UdonNode {
     uint64_t                     source_line;
     uint64_t                     source_column;
     UdonString *                 name;
-    UdonString *                 _name__tail;
     UdonString *                 id;
-    UdonString *                 _id__tail;
     UdonList *                   classes;
     UdonList *                   _classes__tail;
     UdonDict *                   attributes;
