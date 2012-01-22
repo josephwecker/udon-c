@@ -46,10 +46,12 @@
     |default  |.value     |if[inl] | C <<< /value                  |>> :child
                           |else | MARK(d)| [\n]->| TERM(d)| C<<<d  |>> :child
   |state[:attribute]
-    |c[<P>]   |.grim      | -> | g=/node | S.attributes[g.name]=g  |>> :child
-    |c[<L>]   |.grim2     |    | g=/node | S.attributes[g.name]=g  |>> :child
-    |default  |.normal    | key=/label | S.attributes[key]=/value  |>> :child
-
+    #|c[<P>]   |.grim      | -> | g=/node | S.attributes[g.name]=g  |>> :child
+    #|c[<L>]   |.grim2     |    | g=/node | S.attributes[g.name]=g  |>> :child
+    #|default  |.normal    | key=/label | S.attributes[key]=/value  |>> :child
+    |c[<P>]   |.grim      | -> | g=/node | S.attributes{g.name,g}  |>> :child
+    |c[<L>]   |.grim2     |    | g=/node | S.attributes{g.name,g}  |>> :child
+    |default  |.normal    | S.attributes{/label,/value}            |>> :child
 
 |function[value:STRING]   | MARK
   |eof                    | TERM                                   |return S

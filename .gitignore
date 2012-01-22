@@ -29,3 +29,4 @@ libtool
 src/.libs/
 
 udon2xml
+udon_introspect

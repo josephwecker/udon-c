@@ -1,3 +1,9 @@
+[2012-01-19 | dbe8f59 | <joseph.wecker@gmail.com>]  Fixed some optimization flags so that inlining happens better.
+
+[2012-01-19 | 27684fc | <joseph.wecker@gmail.com>]  Removed extra __tail struct members
+
+[2012-01-19 | 2677a3e | <joseph.wecker@gmail.com>]  Simplified state machine significantly. Fixed some string appending
+
 [2012-01-17 | befa22c | <joseph.wecker@gmail.com>]  detect type of local variable initialized with function call.
 
 [2012-01-17 | ca6bd25 | <jwecker@justin.tv>]  Basic quickscanning implemented.

@@ -365,7 +365,6 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
     uint64_t ipar                = p->column-1;
     UdonString * d               = _new_udon_string(p);
     UdonNode * g;
-    UdonString * key;
     self_res->node_type          = UDON_NORMAL;
     s_init:
         if(_UDON_EOF) {
@@ -538,15 +537,14 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
                 case '|':   /*-- attribute.grim */
                     _UDON_ADVANCE_COL();
                     g            = _udon_node(p);
-                    self_res->attributes[g->name] = g;
+                    udon_dict_add_or_update(self_res->attributes,g->name,g);
                     goto s_child;
                 case '[':   /*-- attribute.grim2 */
                     g            = _udon_node(p);
-                    self_res->attributes[g->name] = g;
+                    udon_dict_add_or_update(self_res->attributes,g->name,g);
                     goto s_child;
                 default:    /*-- attribute.normal */
-                    key          = _udon_label(p);
-                    self_res->attributes[key] = _udon_value(p);
+                    udon_dict_add_or_update(self_res->attributes,_udon_label(p),_udon_value(p));
                     goto s_child;
             }
         }
@@ -722,7 +720,6 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
     uint64_t ipar                = p->column-1;
     UdonString * d               = _new_udon_string(p);
     UdonNode * g;
-    UdonString * key;
     self_res->node_type          = UDON_NORMAL;
     s_child_shortcut:
         self_res->node_type      = UDON_ROOT;
@@ -835,15 +832,14 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                 case '|':   /*-- attribute.grim */
                     _UDON_ADVANCE_COL();
                     g            = _udon_node(p);
-                    self_res->attributes[g->name] = g;
+                    udon_dict_add_or_update(self_res->attributes,g->name,g);
                     goto s_child;
                 case '[':   /*-- attribute.grim2 */
                     g            = _udon_node(p);
-                    self_res->attributes[g->name] = g;
+                    udon_dict_add_or_update(self_res->attributes,g->name,g);
                     goto s_child;
                 default:    /*-- attribute.normal */
-                    key          = _udon_label(p);
-                    self_res->attributes[key] = _udon_value(p);
+                    udon_dict_add_or_update(self_res->attributes,_udon_label(p),_udon_value(p));
                     goto s_child;
             }
         }

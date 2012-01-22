@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "udon.h"
-
+/*
 void emit_xml(void *u) {
     printf("<?xml version=\"1.0\"?>");
     UdonNode *root = (UdonNode *)u;
@@ -21,10 +21,10 @@ void emit_xml(void *u) {
 void print_err(UdonError *e) {
     fprintf(stderr, "ERROR: %s\n  Line: %ld\n  Column: %ld\n",
             e->message, e->data_line, e->data_column);
-}
+}*/
 
 int main (int argc, char *argv[]) {
-    int i;
+    /*int i;
     fprintf(stderr, "starting...\n");
     if(argc < 2) {
         fprintf(stderr, "bad argc.\n");
@@ -44,6 +44,6 @@ int main (int argc, char *argv[]) {
     }
     udon_reset_parser(udon);
     udon_free_parser(udon);
-    return res;
+    return res;*/
 }
 

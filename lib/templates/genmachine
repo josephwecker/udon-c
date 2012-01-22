@@ -5,6 +5,7 @@
 # which is what I really care about.
 # TODO:
 #   - get all dict stuff working correctly
+#   - don't preallocate local strings. may cause small memory leaks
 #
 #   (Extra credit)
 #   * have quickscan go to local eof when appropriate instead of always the
@@ -213,6 +214,8 @@ class GM
       f.body << GMCommand.new(f, "if(!res) #{@name}_memory_err(\"Memory allocation failed for #{for_type}.\")")
       f.body << GMCommand.new(f, "memset(res, 0, sizeof(#{type_map(for_type,false)}))")
       f.body << GMCommand.new(f, "res->ll{.}listable_type = #{name.upcase}_#{for_type.upcase}_TYPE") if set_ltype
+      str = @structs.select{|s| s.name == for_type}[0]
+      #end
       f.body << GMCommand.new(f, "return res")
       @body << f
     end
@@ -413,6 +416,11 @@ class GMCommand < GMGenericChild
       @lside = GMCase.new(self, @lside) if @lside
       @rside = GMCase.new(self, @rside) if @rside
       $goto_eofcheck = !(@lside || @rside)
+    elsif cmd =~ /(?<dict>[^\{]+)\{(?<dkey>[^,]+),(?<dval>[^\}]+)\}/
+      @cmd = [gm.name, '_dict_add_or_update(',
+              outv(parse_side($~[:dict])), ',',
+              outv(parse_side($~[:dkey])), ',',
+              outv(parse_side($~[:dval])), ')'].join('')
     elsif cmd =~ /[^\(]((!|=|<|(?<!-)>|\+|-(?!>))+)/
       @operator = $1
       lside, rside = cmd.split(@operator)
