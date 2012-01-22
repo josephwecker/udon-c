@@ -149,6 +149,7 @@ struct _UdonParseState {
 /* --- Private prototypes --- */
 
 static inline UdonNode *     _udon_node(_UdonParseState *p);
+static inline UdonString *   _udon_data(_UdonParseState *p);
 static inline UdonString *   _udon_value(_UdonParseState *p);
 static inline UdonString *   _udon_label(_UdonParseState *p);
 static inline UdonString *   _udon_id(_UdonParseState *p);
@@ -363,7 +364,6 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
     uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
-    UdonString * d               = _new_udon_string(p);
     UdonNode * g;
     self_res->node_type          = UDON_NORMAL;
     s_init:
@@ -506,12 +506,8 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
                         }
                         goto s_child;
                     } else {
-                        if(!d)  d = _new_udon_string(p);
-                        d->start = p->curr;
-                        _UDON_QSCAN_PAST1_NL('\n');
-                        d->length = p->curr - d->start;
                         {
-                            UdonList * _item  = (UdonList *)(d);
+                            UdonList * _item  = (UdonList *)(_udon_data(p));
                             if(_item && ((UdonString *)_item)->start) {
                                 if(!((UdonString *)_item)->length) ((UdonString *)_item)->length = p->curr - ((UdonString *)_item)->start;
                                 UdonList * *_acc_head = (UdonList **) &(self_res->children);
@@ -522,10 +518,9 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
                                     (*_acc_tail)->next = _item;
                                     *_acc_tail = _item;
                                 }
-                                d = NULL;
                             }
                         }
-                        goto _inner_s_child;
+                        goto s_child;
                     }
             }
         }
@@ -549,6 +544,19 @@ static inline UdonNode * _udon_node(_UdonParseState *p) {
             }
         }
     _eof:
+        return self_res;
+}
+
+
+static inline UdonString * _udon_data(_UdonParseState *p) {
+    UdonString * self_res        = _new_udon_string(p);
+    self_res->start              = p->curr;
+    s_main:
+        _UDON_QSCAN_PAST1_NL('\n');
+        self_res->length         = p->curr - self_res->start;
+        return self_res;
+    _eof:
+        self_res->length         = p->curr - self_res->start;
         return self_res;
 }
 
@@ -718,7 +726,6 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
     uint64_t inl                 = 1;
     uint64_t ibase               = p->column;
     uint64_t ipar                = p->column-1;
-    UdonString * d               = _new_udon_string(p);
     UdonNode * g;
     self_res->node_type          = UDON_NORMAL;
     s_child_shortcut:
@@ -801,12 +808,8 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                         }
                         goto s_child;
                     } else {
-                        if(!d)  d = _new_udon_string(p);
-                        d->start = p->curr;
-                        _UDON_QSCAN_PAST1_NL('\n');
-                        d->length = p->curr - d->start;
                         {
-                            UdonList * _item  = (UdonList *)(d);
+                            UdonList * _item  = (UdonList *)(_udon_data(p));
                             if(_item && ((UdonString *)_item)->start) {
                                 if(!((UdonString *)_item)->length) ((UdonString *)_item)->length = p->curr - ((UdonString *)_item)->start;
                                 UdonList * *_acc_head = (UdonList **) &(self_res->children);
@@ -817,10 +820,9 @@ static inline UdonNode * _udon_node__s_child_shortcut(_UdonParseState *p) {
                                     (*_acc_tail)->next = _item;
                                     *_acc_tail = _item;
                                 }
-                                d = NULL;
                             }
                         }
-                        goto _inner_s_child;
+                        goto s_child;
                     }
             }
         }
